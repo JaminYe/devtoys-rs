@@ -87,7 +87,9 @@ jobs:
           fi
           cd ..
           sha256sum devtoys-${{ matrix.target }}.* >> checksums.txt
-          [ -f "devtoys-${{ matrix.target }}-setup.exe" ] && sha256sum "devtoys-${{ matrix.target }}-setup.exe" >> checksums.txt
+          if [ -f "devtoys-${{ matrix.target }}-setup.exe" ]; then
+            sha256sum "devtoys-${{ matrix.target }}-setup.exe" >> checksums.txt
+          fi
 
       - name: Upload to GitHub Release
         if: startsWith(github.ref, 'refs/tags/')

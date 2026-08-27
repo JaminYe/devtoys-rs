@@ -32,7 +32,10 @@ CloseApplications=no
 
 [Languages]
 Name: "english"; MessagesFile: "compiler:Default.isl"
+; 中文语言包为非官方翻译，runner 上可能不存在，存在时才启用
+#if FileExists(CompilerPath + "Languages\ChineseSimplified.isl")
 Name: "chinesesimplified"; MessagesFile: "compiler:Languages\ChineseSimplified.isl"
+#endif
 
 [Tasks]
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"
@@ -47,4 +50,4 @@ Name: "{group}\{#MyAppName} CLI"; Filename: "cmd.exe"; Parameters: "/K ""{app}\d
 Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\devtoys.exe"; Tasks: desktopicon
 
 [Run]
-Filename: "{app}\devtoys.exe"; Description: "{cm:LaunchProgram,{#StringChange(MyAppName, '')}}"; Flags: nowait postinstall skipifsilent
+Filename: "{app}\devtoys.exe"; Description: "{cm:LaunchProgram,{#MyAppName}}"; Flags: nowait postinstall skipifsilent
