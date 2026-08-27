@@ -1,0 +1,91 @@
+name: Build & Package
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+          - os: macos-latest
+            target: aarch64-apple-darwin
+          - os: macos-latest
+            target: x86_64-apple-darwin
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Rust cache
+        uses: Swatinem/rust-cache@v2
+
+      # GPUI 在 Linux 上依赖额外系统库
+      - name: Install Linux dependencies (GPUI)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libxkbcommon-dev libxkbcommon-x11-dev libwayland-dev \
+            libfontconfig1-dev libfreetype6-dev libasound2-dev \
+            libgl1-mesa-dev libegl1-mesa-dev pkg-config
+
+      - name: Build release binaries
+        run: cargo build --release --target ${{ matrix.target }}
+
+      - name: Prepare package directory
+        shell: bash
+        run: |
+          mkdir -p package
+          BIN_DIR="target/${{ matrix.target }}/release"
+          if [ "${{ runner.os }}" = "Windows" ]; then EXT=".exe"; else EXT=""; fi
+          cp "$BIN_DIR/devtoys$EXT" package/
+          cp "$BIN_DIR/devtoys-cli$EXT" package/
+          cp README.md LICENSE package/ 2>/dev/null || true
+
+      - name: Upload artifacts (every push)
+        uses: actions/upload-artifact@v4
+        with:
+          name: devtoys-${{ matrix.target }}
+          path: package/
+          retention-days: 7
+
+      - name: Create archives for tag release
+        if: startsWith(github.ref, 'refs/tags/')
+        shell: bash
+        run: |
+          cd package
+          if [ "${{ runner.os }}" = "Windows" ]; then
+            7z a "../devtoys-${{ matrix.target }}.zip" .
+          else
+            tar czf "../devtoys-${{ matrix.target }}.tar.gz" .
+          fi
+          cd ..
+          sha256sum devtoys-${{ matrix.target }}.* >> checksums.txt
+
+      - name: Upload to GitHub Release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            devtoys-*.zip
+            devtoys-*.tar.gz
+            checksums.txt

@@ -1,0 +1,21 @@
+# Rust
+/target
+/target-gen
+**/*.rs.bk
+
+# IDE
+.idea/
+.vscode/
+*.iml
+
+# Agent 工作目录（本地issue跟踪等）
+.scratch/
+.agents/
+
+# 系统
+.DS_Store
+Thumbs.db
+
+# 环境变量 / 密钥
+.env
+.env.*

@@ -1,0 +1,3 @@
+# gpui-component: Windows 默认栈偏小，链接时拉到 8MB。
+[target.x86_64-pc-windows-msvc]
+rustflags = ["-C", "link-arg=/STACK:8388608"]

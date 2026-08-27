@@ -1,0 +1,56 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/api",
+    "crates/core",
+    "crates/tools",
+    "crates/host",
+    "crates/cli",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+publish = false
+
+[workspace.dependencies]
+devtoys-api = { path = "crates/api" }
+devtoys-core = { path = "crates/core" }
+devtoys-tools = { path = "crates/tools" }
+anyhow = "1"
+base64 = "0.22"
+chrono = { version = "0.4", default-features = false, features = ["clock", "std"] }
+chrono-tz = "0.10"
+clap = { version = "4", features = ["derive"] }
+cron = "0.15"
+data-encoding = "2"
+dirs = "6"
+flate2 = "1"
+gpui = "0.2.2"
+gpui-component = "0.5.1"
+hex = "0.4"
+hmac = "0.12"
+html-escape = "0.2"
+image = "0.25"
+jsonpath-rust = "0.7"
+jsonwebtoken = "9"
+md-5 = "0.10"
+percent-encoding = "2"
+pulldown-cmark = "0.13"
+qrcode = "0.14"
+quick-xml = "0.37"
+rand = "0.8"
+regex = "1"
+rqrr = "0.8"
+serde = { version = "1", features = ["derive"] }
+serde_json = { version = "1", features = ["preserve_order"] }
+serde_yaml = "0.9"
+sha1 = "0.10"
+sha2 = "0.10"
+similar = "2"
+sqlformat = "0.3"
+tempfile = "3"
+thiserror = "2"
+uuid = { version = "1", features = ["v1", "v4", "v7", "std"] }
+x509-parser = "0.16"
