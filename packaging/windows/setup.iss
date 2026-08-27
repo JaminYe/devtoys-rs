@@ -46,7 +46,7 @@ Source: "..\..\target\{#Target}\release\devtoys-cli.exe"; DestDir: "{app}"; Flag
 
 [Icons]
 Name: "{group}\{#MyAppName}"; Filename: "{app}\devtoys.exe"
-Name: "{group}\{#MyAppName} CLI"; Filename: "cmd.exe"; Parameters: "/K ""{app}\devtoys-cli.exe"" --help"; Flags: excludefromshowifnew
+Name: "{group}\{#MyAppName} CLI"; Filename: "cmd.exe"; Parameters: "/K ""{app}\devtoys-cli.exe"" --help"
 Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\devtoys.exe"; Tasks: desktopicon
 
 [Run]
