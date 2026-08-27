@@ -2,9 +2,7 @@ name: Build & Package
 
 on:
   push:
-    branches: [main]
     tags: ['v*']
-  pull_request:
   workflow_dispatch:
 
 permissions:
@@ -61,7 +59,8 @@ jobs:
           cp "$BIN_DIR/devtoys-cli$EXT" package/
           cp README.md LICENSE package/ 2>/dev/null || true
 
-      - name: Upload artifacts (every push)
+      - name: Upload artifacts (manual trigger)
+        if: github.event_name == 'workflow_dispatch'
         uses: actions/upload-artifact@v4
         with:
           name: devtoys-${{ matrix.target }}
