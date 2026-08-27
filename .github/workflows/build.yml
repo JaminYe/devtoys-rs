@@ -49,6 +49,14 @@ jobs:
       - name: Build release binaries
         run: cargo build --release --target ${{ matrix.target }}
 
+      - name: Package Windows installer (Inno Setup)
+        if: runner.os == 'Windows' && startsWith(github.ref, 'refs/tags/')
+        shell: pwsh
+        run: |
+          $version = "${{ github.ref_name }}" -replace '^v', ''
+          & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" /DAppVersion=$version /DTarget=${{ matrix.target }} packaging\windows\setup.iss
+          Move-Item "packaging\windows\output\devtoys-${{ matrix.target }}-setup.exe" "devtoys-${{ matrix.target }}-setup.exe"
+
       - name: Prepare package directory
         shell: bash
         run: |
@@ -79,6 +87,7 @@ jobs:
           fi
           cd ..
           sha256sum devtoys-${{ matrix.target }}.* >> checksums.txt
+          [ -f "devtoys-${{ matrix.target }}-setup.exe" ] && sha256sum "devtoys-${{ matrix.target }}-setup.exe" >> checksums.txt
 
       - name: Upload to GitHub Release
         if: startsWith(github.ref, 'refs/tags/')
@@ -87,4 +96,5 @@ jobs:
           files: |
             devtoys-*.zip
             devtoys-*.tar.gz
+            devtoys-*-setup.exe
             checksums.txt
