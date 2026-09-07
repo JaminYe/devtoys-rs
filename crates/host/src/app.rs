@@ -137,9 +137,6 @@ impl Workspace {
 
     fn go(&mut self, page: Page) {
         self.page = page;
-        if let Page::Tool(id) = &self.page {
-            self.recommendations.retain(|item| item.tool_id != *id);
-        }
     }
 
     fn open_tool(&mut self, id: &str, payload: Option<String>) {
@@ -150,7 +147,6 @@ impl Workspace {
 
         let _ = self.state.open_tool(id);
         self.page = Page::Tool(id.to_string());
-        self.recommendations.retain(|item| item.tool_id != id);
 
         if !self.sessions.contains_key(id) {
             if let Some(handle) = default_catalog().open_view(id) {
@@ -570,7 +566,6 @@ impl Workspace {
                         self.apply_setting(result);
                         if !detection {
                             self.coordinator.clear();
-                            self.recommendations.clear();
                         }
                     }
                     ui.add_enabled_ui(detection, |ui| {
