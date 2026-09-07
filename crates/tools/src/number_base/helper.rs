@@ -241,7 +241,10 @@ mod tests {
 
     #[test]
     fn base64_foo_is_literal() {
-        assert_eq!(encode_rfc4648("foo", Rfc4648Encoding::Base64).unwrap(), "Zm9v");
+        assert_eq!(
+            encode_rfc4648("foo", Rfc4648Encoding::Base64).unwrap(),
+            "Zm9v"
+        );
         assert_eq!(
             convert_rfc4648("Zm9v", Rfc4648Encoding::Base64, Rfc4648Encoding::Base16).unwrap(),
             "666F6F"

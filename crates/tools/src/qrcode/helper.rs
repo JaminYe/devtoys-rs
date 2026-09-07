@@ -2,8 +2,8 @@ use std::io::Cursor;
 use std::path::Path;
 
 use image::{DynamicImage, ImageFormat};
-use ::qrcode::render::svg;
-use ::qrcode::QrCode;
+use qrcode::render::svg;
+use qrcode::QrCode;
 use rqrr::PreparedImage;
 
 #[derive(Debug, thiserror::Error, PartialEq, Eq)]

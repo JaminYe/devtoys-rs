@@ -8,6 +8,8 @@ description = "Registry, navigation, settings store, and Smart Detection engine"
 
 [dependencies]
 devtoys-api.workspace = true
+arboard.workspace = true
+image.workspace = true
 dirs.workspace = true
 serde.workspace = true
 serde_json.workspace = true

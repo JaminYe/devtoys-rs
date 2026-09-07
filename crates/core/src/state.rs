@@ -59,26 +59,8 @@ impl AppState {
             .collect()
     }
 
-    pub fn open_tool(&mut self, id: &str) -> Result<(), CoreError> {
-        if self.registry.get(id).is_none() {
-            return Ok(());
-        }
-        self.settings.recent.retain(|existing| existing != id);
-        self.settings.recent.insert(0, id.to_string());
-        self.settings.recent.truncate(3);
-        self.persist()
-    }
-
-    pub fn recent_tools(&self) -> Vec<&ToolMetadata> {
-        if !self.settings.show_recent {
-            return Vec::new();
-        }
-        self.settings
-            .recent
-            .iter()
-            .filter_map(|id| self.registry.get(id))
-            .take(3)
-            .collect()
+    pub fn open_tool(&mut self, _id: &str) -> Result<(), CoreError> {
+        Ok(())
     }
 
     pub fn set_theme(&mut self, theme: ThemePreference) -> Result<(), CoreError> {
@@ -93,11 +75,6 @@ impl AppState {
 
     pub fn set_smart_detection_paste(&mut self, enabled: bool) -> Result<(), CoreError> {
         self.settings.smart_detection_paste = enabled;
-        self.persist()
-    }
-
-    pub fn set_show_recent(&mut self, show: bool) -> Result<(), CoreError> {
-        self.settings.show_recent = show;
         self.persist()
     }
 }

@@ -29,9 +29,9 @@ pub struct CliTool {
 
 pub fn build_cli() -> Command {
     let mut cmd = Command::new("devtoys-cli")
-        .about("DevToys CLI：调用工具 Helper，不启动 GPUI")
+        .about("DevToys CLI：调用工具 Helper，不启动 GUI")
         .subcommand_required(false);
-    for tool in crate::all_cli_tools() {
+    for tool in crate::default_catalog().all_cli() {
         let mut sub = Command::new(tool.name).about(tool.about);
         for alias in tool.aliases {
             sub = sub.visible_alias(*alias);
@@ -45,7 +45,8 @@ pub fn run_cli(matches: &ArgMatches) -> Result<(), CliError> {
     let Some((name, sub)) = matches.subcommand() else {
         return Ok(());
     };
-    let tool = crate::all_cli_tools()
+    let tool = crate::default_catalog()
+        .all_cli()
         .into_iter()
         .find(|tool| tool.name == name)
         .ok_or_else(|| CliError::new(format!("未知命令: {name}")))?;

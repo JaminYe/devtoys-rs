@@ -1,5 +1,7 @@
 //! Registry, navigation, settings store, and Smart Detection engine.
 
+mod clipboard;
+mod coordinator;
 mod detection;
 mod detectors;
 mod error;
@@ -8,6 +10,8 @@ mod settings_store;
 mod state;
 
 pub use detection::{DetectOptions, DetectionEngine, Recommendation};
+pub use clipboard::{rgba_to_png, ClipboardSource, InMemoryClipboard, SystemClipboard};
+pub use coordinator::DetectionCoordinator;
 pub use detectors::{
     Base64ImageDetector, Base64TextDetector, DateDetector, FileDetector, FilesDetector,
     GzipDetector, ImageDetector, ImageFileDetector, JsonArrayDetector, JsonDetector, TextDetector,

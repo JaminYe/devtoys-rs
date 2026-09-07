@@ -46,10 +46,7 @@ fn run(matches: &ArgMatches) -> Result<(), CliError> {
     if !input_path.is_file() {
         return Err(CliError::new("无法读取输入文件"));
     }
-    if !input_path
-        .to_str()
-        .is_some_and(is_static_image_path)
-    {
+    if !input_path.to_str().is_some_and(is_static_image_path) {
         return Err(CliError::new("不支持的图像类型"));
     }
 

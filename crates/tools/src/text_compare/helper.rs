@@ -56,6 +56,8 @@ mod tests {
                 .any(|h| h.tag == DiffTag::Insert && h.text.trim() == "c"),
             "expected Insert c, got {hunks:?}"
         );
-        assert!(hunks.iter().any(|h| h.tag == DiffTag::Equal && h.text.trim() == "a"));
+        assert!(hunks
+            .iter()
+            .any(|h| h.tag == DiffTag::Equal && h.text.trim() == "a"));
     }
 }

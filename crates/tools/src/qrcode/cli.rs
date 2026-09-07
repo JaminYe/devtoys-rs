@@ -39,8 +39,8 @@ fn run(matches: &ArgMatches) -> Result<(), CliError> {
     let output = matches.get_one::<String>("output").map(String::as_str);
 
     if is_existing_image_file(input) {
-        let text = decode_image_path(Path::new(input))
-            .map_err(|err| CliError::new(err.to_string()))?;
+        let text =
+            decode_image_path(Path::new(input)).map_err(|err| CliError::new(err.to_string()))?;
         write_output(output, &text)
     } else {
         let source = read_input(input)?;

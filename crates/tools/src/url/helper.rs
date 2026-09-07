@@ -51,7 +51,10 @@ pub fn convert(input: &str, conversion: Conversion, multiline: bool) -> Result<S
     }
 }
 
-fn map_lines(input: &str, f: impl Fn(&str) -> Result<String, UrlError>) -> Result<String, UrlError> {
+fn map_lines(
+    input: &str,
+    f: impl Fn(&str) -> Result<String, UrlError>,
+) -> Result<String, UrlError> {
     let mut out = String::new();
     for (i, line) in input.split('\n').enumerate() {
         if i > 0 {
@@ -90,7 +93,10 @@ mod tests {
     #[test]
     fn encode_space_is_percent_20() {
         let got = encode("a b");
-        assert!(got.contains("%20"), "expected percent-encoded space, got {got}");
+        assert!(
+            got.contains("%20"),
+            "expected percent-encoded space, got {got}"
+        );
     }
 
     #[test]

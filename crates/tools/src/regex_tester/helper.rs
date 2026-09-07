@@ -177,7 +177,8 @@ fn run_timed<T: Send + 'static>(
             let _ = tx.send(work());
         })
         .map_err(|_| RegexTesterError::Timeout)?;
-    rx.recv_timeout(timeout).map_err(|_| RegexTesterError::Timeout)
+    rx.recv_timeout(timeout)
+        .map_err(|_| RegexTesterError::Timeout)
 }
 
 /// Nested quantifiers such as `(a+)+` that explode on a backtracking engine.

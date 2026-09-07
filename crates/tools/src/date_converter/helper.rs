@@ -174,9 +174,7 @@ fn utc_to_timestamp_string(
     let value = match (format, epoch_dt) {
         (TimestampFormat::Seconds, None) => utc.timestamp() as i128,
         (TimestampFormat::Milliseconds, None) => utc.timestamp_millis() as i128,
-        (TimestampFormat::Ticks, None) => {
-            unix_nanos / NANOS_PER_TICK + UNIX_EPOCH_TICKS
-        }
+        (TimestampFormat::Ticks, None) => unix_nanos / NANOS_PER_TICK + UNIX_EPOCH_TICKS,
         (TimestampFormat::Seconds, Some(epoch)) => {
             (unix_nanos - epoch_nanos(epoch)?) / NANOS_PER_SECOND
         }
@@ -263,8 +261,7 @@ mod tests {
 
     #[test]
     fn unix_zero_seconds_is_1970_in_utc() {
-        let got =
-            timestamp_to_datetime("0", TimestampFormat::Seconds, Some("UTC"), None).unwrap();
+        let got = timestamp_to_datetime("0", TimestampFormat::Seconds, Some("UTC"), None).unwrap();
         assert_eq!(got, "1970-01-01T00:00:00+00:00");
         assert!(got.contains("1970-01-01"));
     }
@@ -279,8 +276,7 @@ mod tests {
         )
         .unwrap();
         assert_eq!(ts, "0");
-        let back =
-            timestamp_to_datetime(&ts, TimestampFormat::Seconds, Some("UTC"), None).unwrap();
+        let back = timestamp_to_datetime(&ts, TimestampFormat::Seconds, Some("UTC"), None).unwrap();
         assert_eq!(back, "1970-01-01T00:00:00+00:00");
     }
 
@@ -303,7 +299,10 @@ mod tests {
             datetime_to_timestamp(input, TimestampFormat::Seconds, Some("UTC"), None).unwrap_err();
         assert_eq!(err, DateConvertError::InvalidInput);
         let message = err.to_string();
-        assert!(!message.contains(input), "error must not include user input");
+        assert!(
+            !message.contains(input),
+            "error must not include user input"
+        );
         assert!(!message.contains("xyz"));
     }
 }

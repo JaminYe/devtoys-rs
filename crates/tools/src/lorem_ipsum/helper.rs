@@ -143,7 +143,11 @@ pub enum LoremError {
 }
 
 /// Deterministic placeholder text: cycle the embedded excerpt. No RNG.
-pub fn generate_lorem(corpus: Corpus, unit: LoremUnit, length: usize) -> Result<String, LoremError> {
+pub fn generate_lorem(
+    corpus: Corpus,
+    unit: LoremUnit,
+    length: usize,
+) -> Result<String, LoremError> {
     if length == 0 {
         return Err(LoremError::InvalidLength);
     }
@@ -244,7 +248,10 @@ mod tests {
         let a = generate_lorem(Corpus::TheRaven, LoremUnit::Sentences, 2).unwrap();
         let b = generate_lorem(Corpus::TheRaven, LoremUnit::Sentences, 2).unwrap();
         assert_eq!(a, b);
-        assert_eq!(a.split(". ").count().max(a.matches('.').count()), a.matches('.').count());
+        assert_eq!(
+            a.split(". ").count().max(a.matches('.').count()),
+            a.matches('.').count()
+        );
     }
 
     #[test]

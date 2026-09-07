@@ -45,7 +45,10 @@ fn run(matches: &ArgMatches) -> Result<(), CliError> {
     let json = read_input(json)?;
     let path = read_input(path)?;
     let result = eval_jsonpath(&json, &path).map_err(map_err)?;
-    write_output(matches.get_one::<String>("output").map(String::as_str), &result)
+    write_output(
+        matches.get_one::<String>("output").map(String::as_str),
+        &result,
+    )
 }
 
 fn map_err(err: JsonPathError) -> CliError {

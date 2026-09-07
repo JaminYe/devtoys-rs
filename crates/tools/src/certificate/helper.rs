@@ -9,7 +9,10 @@ pub enum CertificateError {
     UnsupportedPfx,
 }
 
-pub fn decode_certificate(input: &[u8], password: Option<&str>) -> Result<String, CertificateError> {
+pub fn decode_certificate(
+    input: &[u8],
+    password: Option<&str>,
+) -> Result<String, CertificateError> {
     if looks_like_pfx(input) {
         return Err(CertificateError::UnsupportedPfx);
     }
@@ -105,15 +108,24 @@ rTyFj9ZjK1rUjyJ8CPyXGhh+GDU7qQBKu7yJK6jMLM0sYVa65Vs2cT7j
         let err = decode_certificate(b"not-a-cert", None).unwrap_err();
         assert_eq!(err, CertificateError::InvalidCertificate);
         let message = err.to_string();
-        assert!(!message.contains("not-a-cert"), "error must not include user input");
+        assert!(
+            !message.contains("not-a-cert"),
+            "error must not include user input"
+        );
     }
 
     #[test]
     fn error_does_not_contain_password() {
         let err = decode_certificate(b"not-a-cert", Some("s3cret-pass")).unwrap_err();
         let message = err.to_string();
-        assert!(!message.contains("s3cret-pass"), "error must not include password");
+        assert!(
+            !message.contains("s3cret-pass"),
+            "error must not include password"
+        );
         let debug = format!("{err:?}");
-        assert!(!debug.contains("s3cret-pass"), "debug must not include password");
+        assert!(
+            !debug.contains("s3cret-pass"),
+            "debug must not include password"
+        );
     }
 }

@@ -25,11 +25,15 @@ chrono-tz = "0.10"
 clap = { version = "4", features = ["derive"] }
 cron = "0.15"
 data-encoding = "2"
+arboard = "3"
 dirs = "6"
+eframe = { version = "0.36", default-features = false, features = ["accesskit", "glow", "default_fonts", "wayland", "x11"] }
+egui = "0.36"
+egui_extras = { version = "0.36", features = ["image", "svg"] }
 flate2 = "1"
-gpui = "0.2.2"
-gpui-component = "0.5.1"
 hex = "0.4"
+log = "0.4"
+memmap2 = "0.9"
 hmac = "0.12"
 html-escape = "0.2"
 image = "0.25"
@@ -47,6 +51,7 @@ serde = { version = "1", features = ["derive"] }
 serde_json = { version = "1", features = ["preserve_order"] }
 serde_yaml = "0.9"
 sha1 = "0.10"
+skrifa = "0.44"
 sha2 = "0.10"
 similar = "2"
 sqlformat = "0.3"

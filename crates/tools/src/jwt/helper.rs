@@ -125,8 +125,7 @@ pub struct JwtDecoded {
 }
 
 pub fn encode_jwt(payload: &str, opts: &JwtEncodeOptions) -> Result<String, JwtError> {
-    let mut claims: Value =
-        serde_json::from_str(payload).map_err(|_| JwtError::InvalidPayload)?;
+    let mut claims: Value = serde_json::from_str(payload).map_err(|_| JwtError::InvalidPayload)?;
     apply_encode_claims(&mut claims, opts)?;
     let header = Header::new(opts.algorithm.to_jwt());
     let key = encoding_key(opts)?;
@@ -136,8 +135,14 @@ pub fn encode_jwt(payload: &str, opts: &JwtEncodeOptions) -> Result<String, JwtE
 pub fn decode_jwt(token: &str, opts: &JwtDecodeOptions) -> Result<JwtDecoded, JwtError> {
     let token = token.trim();
     let mut parts = token.split('.');
-    let header_part = parts.next().filter(|s| !s.is_empty()).ok_or(JwtError::InvalidToken)?;
-    let payload_part = parts.next().filter(|s| !s.is_empty()).ok_or(JwtError::InvalidToken)?;
+    let header_part = parts
+        .next()
+        .filter(|s| !s.is_empty())
+        .ok_or(JwtError::InvalidToken)?;
+    let payload_part = parts
+        .next()
+        .filter(|s| !s.is_empty())
+        .ok_or(JwtError::InvalidToken)?;
     let signature_part = parts.next().ok_or(JwtError::InvalidToken)?;
     if parts.next().is_some() {
         return Err(JwtError::InvalidToken);
@@ -223,7 +228,8 @@ fn verify_jwt(token: &str, opts: &JwtDecodeOptions, decoded: &JwtDecoded) -> Res
         validation.insecure_disable_signature_validation();
     }
     let key = decoding_key(alg, opts, verify_sig)?;
-    decode::<Map<String, Value>>(token, &key, &validation).map_err(|_| JwtError::VerificationFailed)?;
+    decode::<Map<String, Value>>(token, &key, &validation)
+        .map_err(|_| JwtError::VerificationFailed)?;
 
     if let Some(actor) = opts.actor.as_deref().filter(|s| !s.is_empty()) {
         let payload: Value =

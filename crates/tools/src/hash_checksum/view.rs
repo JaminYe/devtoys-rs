@@ -1,216 +1,128 @@
-use gpui::{
-    div, prelude::*, ClipboardItem, Context, Entity, SharedString, Subscription, Window,
-};
-use gpui_component::button::{Button, ButtonVariants as _};
-use gpui_component::input::{Input, InputEvent, InputState};
-use gpui_component::switch::Switch;
-use gpui_component::{h_flex, v_flex, ActiveTheme, Selectable};
+use crate::slot::ToolView;
+use crate::ui;
 
-use crate::slot::ReceivesData;
 use super::{checksum_matches, compute_hash, HashAlgorithm};
 
 pub struct HashChecksumView {
-    input: Entity<InputState>,
-    hmac: Entity<InputState>,
-    expected: Entity<InputState>,
-    output: Entity<InputState>,
+    input: String,
+    hmac: String,
+    expected: String,
+    output: String,
     algorithm: HashAlgorithm,
     uppercase: bool,
     match_state: Option<bool>,
-    error: Option<SharedString>,
-    _subscriptions: Vec<Subscription>,
+    error: Option<String>,
 }
 
 impl HashChecksumView {
-    pub fn new(window: &mut Window, cx: &mut Context<Self>) -> Self {
-        let input = cx.new(|cx| {
-            InputState::new(window, cx)
-                .multi_line(true)
-                .rows(10)
-                .placeholder("输入文本")
-        });
-        let hmac = cx.new(|cx| InputState::new(window, cx).placeholder("HMAC 密钥（可选）"));
-        let expected = cx.new(|cx| InputState::new(window, cx).placeholder("期望校验和"));
-        let output = cx.new(|cx| InputState::new(window, cx).placeholder("哈希结果"));
-
-        let mut subscriptions = Vec::new();
-        for source in [&input, &hmac, &expected] {
-            subscriptions.push(cx.subscribe_in(
-                source,
-                window,
-                |this, _, event: &InputEvent, window, cx| {
-                    if matches!(event, InputEvent::Change) {
-                        this.recompute(window, cx);
-                    }
-                },
-            ));
-        }
-
+    pub fn new() -> Self {
         Self {
-            input,
-            hmac,
-            expected,
-            output,
+            input: String::new(),
+            hmac: String::new(),
+            expected: String::new(),
+            output: String::new(),
             algorithm: HashAlgorithm::Md5,
             uppercase: false,
             match_state: None,
             error: None,
-            _subscriptions: subscriptions,
         }
     }
 
-    fn recompute(&mut self, window: &mut Window, cx: &mut Context<Self>) {
-        let source = self.input.read(cx).value().to_string();
-        let hmac_raw = self.hmac.read(cx).value().to_string();
-        let hmac = if hmac_raw.is_empty() {
+    fn recompute(&mut self) {
+        let hmac = if self.hmac.is_empty() {
             None
         } else {
-            Some(hmac_raw.as_str())
+            Some(self.hmac.as_str())
         };
-        match compute_hash(&source, self.algorithm, hmac, self.uppercase, false) {
+        match compute_hash(&self.input, self.algorithm, hmac, self.uppercase, false) {
             Ok(hex) => {
                 self.error = None;
-                let expected = self.expected.read(cx).value().to_string();
-                self.match_state = if expected.trim().is_empty() {
+                self.match_state = if self.expected.trim().is_empty() {
                     None
                 } else {
-                    Some(checksum_matches(&hex, &expected))
+                    Some(checksum_matches(&hex, &self.expected))
                 };
-                self.output.update(cx, |output, cx| {
-                    output.set_value(hex, window, cx);
-                });
+                self.output = hex;
             }
             Err(err) => {
-                self.error = Some(SharedString::from(err.to_string()));
+                self.error = Some(err.to_string());
                 self.match_state = None;
-                self.output.update(cx, |output, cx| {
-                    output.set_value(String::new(), window, cx);
-                });
+                self.output.clear();
             }
         }
-        cx.notify();
-    }
-
-    fn algo_button(
-        &self,
-        id: &'static str,
-        label: &'static str,
-        value: HashAlgorithm,
-        cx: &mut Context<Self>,
-    ) -> impl IntoElement {
-        Button::new(id)
-            .label(label)
-            .compact()
-            .selected(self.algorithm == value)
-            .on_click(cx.listener(move |this, _, window, cx| {
-                this.algorithm = value;
-                this.recompute(window, cx);
-            }))
-    }
-
-    fn copy_output(&mut self, cx: &mut Context<Self>) {
-        if self.error.is_some() {
-            return;
-        }
-        let text = self.output.read(cx).value().to_string();
-        if text.is_empty() {
-            return;
-        }
-        cx.write_to_clipboard(ClipboardItem::new_string(text));
     }
 }
 
-impl ReceivesData for HashChecksumView {
-    fn on_data_received(
-        &mut self,
-        payload: &str,
-        window: &mut Window,
-        cx: &mut Context<Self>,
-    ) {
-        self.input.update(cx, |input, cx| {
-            input.set_value(payload.to_string(), window, cx);
+impl ToolView for HashChecksumView {
+    fn ui(&mut self, ui: &mut egui::Ui) {
+        let mut dirty = false;
+        ui.horizontal_wrapped(|ui| {
+            for (label, value) in [
+                ("MD5", HashAlgorithm::Md5),
+                ("SHA1", HashAlgorithm::Sha1),
+                ("SHA256", HashAlgorithm::Sha256),
+                ("SHA384", HashAlgorithm::Sha384),
+                ("SHA512", HashAlgorithm::Sha512),
+            ] {
+                if ui::toggle(ui, self.algorithm == value, label).clicked() {
+                    self.algorithm = value;
+                    dirty = true;
+                }
+            }
+            dirty |= ui.checkbox(&mut self.uppercase, "大写").changed();
+            if ui::primary_button(ui, "复制").clicked() && self.error.is_none() {
+                ui::copy_text(ui, &self.output);
+            }
         });
-        self.recompute(window, cx);
+        ui.columns(2, |cols| {
+            cols[0].label("HMAC 密钥");
+            if ui::singleline(
+                &mut cols[0],
+                "hash-hmac",
+                &mut self.hmac,
+                "HMAC 密钥（可选）",
+            ) {
+                dirty = true;
+            }
+            cols[1].label("期望校验和");
+            if ui::singleline(
+                &mut cols[1],
+                "hash-expected",
+                &mut self.expected,
+                "期望校验和",
+            ) {
+                dirty = true;
+            }
+        });
+        if dirty {
+            self.recompute();
+        }
+        ui::error_label(ui, self.error.as_deref());
+        if let Some(matched) = self.match_state {
+            if matched {
+                ui.colored_label(ui::success(ui), "匹配");
+            } else {
+                ui.colored_label(ui::danger(ui), "不匹配");
+            }
+        }
+        let mut input_changed = false;
+        ui::split_2(
+            ui,
+            |ui| {
+                input_changed =
+                    ui::labeled_code(ui, "输入", "hash-in", &mut self.input, "输入文本", true);
+            },
+            |ui| {
+                ui::labeled_code(ui, "输出", "hash-out", &mut self.output, "哈希结果", false);
+            },
+        );
+        if input_changed {
+            self.recompute();
+        }
     }
-}
 
-impl Render for HashChecksumView {
-    fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        v_flex()
-            .size_full()
-            .p_4()
-            .gap_3()
-            .child(
-                h_flex()
-                    .gap_2()
-                    .items_center()
-                    .flex_wrap()
-                    .child(self.algo_button("algo-md5", "MD5", HashAlgorithm::Md5, cx))
-                    .child(self.algo_button("algo-sha1", "SHA1", HashAlgorithm::Sha1, cx))
-                    .child(self.algo_button("algo-sha256", "SHA256", HashAlgorithm::Sha256, cx))
-                    .child(self.algo_button("algo-sha384", "SHA384", HashAlgorithm::Sha384, cx))
-                    .child(self.algo_button("algo-sha512", "SHA512", HashAlgorithm::Sha512, cx))
-                    .child(
-                        Switch::new("hash-uppercase")
-                            .label("大写")
-                            .checked(self.uppercase)
-                            .on_click(cx.listener(|this, checked, window, cx| {
-                                this.uppercase = *checked;
-                                this.recompute(window, cx);
-                            })),
-                    )
-                    .child(
-                        Button::new("copy-output")
-                            .primary()
-                            .label("复制")
-                            .on_click(cx.listener(|this, _, _, cx| {
-                                this.copy_output(cx);
-                            })),
-                    ),
-            )
-            .when_some(self.error.clone(), |this, message| {
-                this.child(div().text_color(cx.theme().danger).child(message))
-            })
-            .when_some(self.match_state, |this, matched| {
-                this.child(
-                    div()
-                        .text_color(if matched {
-                            cx.theme().success
-                        } else {
-                            cx.theme().danger
-                        })
-                        .child(if matched { "匹配" } else { "不匹配" }),
-                )
-            })
-            .child(
-                h_flex()
-                    .gap_3()
-                    .child(v_flex().flex_1().gap_1().child("HMAC 密钥").child(Input::new(&self.hmac)))
-                    .child(v_flex().flex_1().gap_1().child("期望校验和").child(Input::new(&self.expected))),
-            )
-            .child(
-                gpui::div()
-                    .flex()
-                    .flex_row()
-                    .flex_1()
-                    .gap_3()
-                    .min_h_0()
-                    .child(
-                        v_flex()
-                            .flex_1()
-                            .gap_1()
-                            .min_h_0()
-                            .child("输入")
-                            .child(Input::new(&self.input).h_full()),
-                    )
-                    .child(
-                        v_flex()
-                            .flex_1()
-                            .gap_1()
-                            .min_h_0()
-                            .child("输出")
-                            .child(Input::new(&self.output).h_full().disabled(true)),
-                    ),
-            )
+    fn on_data_received(&mut self, payload: &str) {
+        self.input = payload.to_string();
+        self.recompute();
     }
 }

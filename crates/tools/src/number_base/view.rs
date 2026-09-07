@@ -1,96 +1,38 @@
-use gpui::{
-    div, prelude::*, ClipboardItem, Context, Entity, SharedString, Subscription, Window,
-};
-use gpui_component::button::{Button, ButtonVariants as _};
-use gpui_component::input::{Input, InputEvent, InputState};
-use gpui_component::switch::Switch;
-use gpui_component::{h_flex, v_flex, ActiveTheme, Selectable};
+use crate::slot::ToolView;
+use crate::ui;
 
-use crate::slot::ReceivesData;
 use super::{
     add_thousands_separators, convert_base, convert_rfc4648, decode_custom, encode_custom,
     encode_rfc4648, NumberBase, Rfc4648Encoding,
 };
 
 pub struct NumberBaseView {
-    decimal: Entity<InputState>,
-    hexadecimal: Entity<InputState>,
-    octal: Entity<InputState>,
-    binary: Entity<InputState>,
-    advanced_input: Entity<InputState>,
-    advanced_output: Entity<InputState>,
-    custom_alphabet: Entity<InputState>,
+    decimal: String,
+    hexadecimal: String,
+    octal: String,
+    binary: String,
+    advanced_input: String,
+    advanced_output: String,
+    custom_alphabet: String,
     advanced: bool,
     thousands: bool,
     from_encoding: Rfc4648Encoding,
     to_encoding: Rfc4648Encoding,
     use_custom: bool,
     syncing: bool,
-    error: Option<SharedString>,
-    _subscriptions: Vec<Subscription>,
+    error: Option<String>,
 }
 
 impl NumberBaseView {
-    pub fn new(window: &mut Window, cx: &mut Context<Self>) -> Self {
-        let decimal = cx.new(|cx| InputState::new(window, cx).placeholder("十进制"));
-        let hexadecimal = cx.new(|cx| InputState::new(window, cx).placeholder("十六进制"));
-        let octal = cx.new(|cx| InputState::new(window, cx).placeholder("八进制"));
-        let binary = cx.new(|cx| InputState::new(window, cx).placeholder("二进制"));
-        let advanced_input = cx.new(|cx| {
-            InputState::new(window, cx)
-                .multi_line(true)
-                .rows(6)
-                .placeholder("高级输入")
-        });
-        let advanced_output = cx.new(|cx| {
-            InputState::new(window, cx)
-                .multi_line(true)
-                .rows(6)
-                .placeholder("高级输出")
-        });
-        let custom_alphabet = cx.new(|cx| InputState::new(window, cx).placeholder("自定义字符表"));
-
-        let subscriptions = vec![
-            cx.subscribe_in(&decimal, window, |this, _, event: &InputEvent, window, cx| {
-                if matches!(event, InputEvent::Change) {
-                    this.sync_from(NumberBase::Decimal, window, cx);
-                }
-            }),
-            cx.subscribe_in(&hexadecimal, window, |this, _, event: &InputEvent, window, cx| {
-                if matches!(event, InputEvent::Change) {
-                    this.sync_from(NumberBase::Hexadecimal, window, cx);
-                }
-            }),
-            cx.subscribe_in(&octal, window, |this, _, event: &InputEvent, window, cx| {
-                if matches!(event, InputEvent::Change) {
-                    this.sync_from(NumberBase::Octal, window, cx);
-                }
-            }),
-            cx.subscribe_in(&binary, window, |this, _, event: &InputEvent, window, cx| {
-                if matches!(event, InputEvent::Change) {
-                    this.sync_from(NumberBase::Binary, window, cx);
-                }
-            }),
-            cx.subscribe_in(&advanced_input, window, |this, _, event: &InputEvent, window, cx| {
-                if matches!(event, InputEvent::Change) {
-                    this.reconvert_advanced(window, cx);
-                }
-            }),
-            cx.subscribe_in(&custom_alphabet, window, |this, _, event: &InputEvent, window, cx| {
-                if matches!(event, InputEvent::Change) {
-                    this.reconvert_advanced(window, cx);
-                }
-            }),
-        ];
-
+    pub fn new() -> Self {
         Self {
-            decimal,
-            hexadecimal,
-            octal,
-            binary,
-            advanced_input,
-            advanced_output,
-            custom_alphabet,
+            decimal: String::new(),
+            hexadecimal: String::new(),
+            octal: String::new(),
+            binary: String::new(),
+            advanced_input: String::new(),
+            advanced_output: String::new(),
+            custom_alphabet: String::new(),
             advanced: false,
             thousands: false,
             from_encoding: Rfc4648Encoding::Base64,
@@ -98,11 +40,19 @@ impl NumberBaseView {
             use_custom: false,
             syncing: false,
             error: None,
-            _subscriptions: subscriptions,
         }
     }
 
-    fn field(&self, base: NumberBase) -> &Entity<InputState> {
+    fn field_mut(&mut self, base: NumberBase) -> &mut String {
+        match base {
+            NumberBase::Decimal => &mut self.decimal,
+            NumberBase::Hexadecimal => &mut self.hexadecimal,
+            NumberBase::Octal => &mut self.octal,
+            NumberBase::Binary => &mut self.binary,
+        }
+    }
+
+    fn field(&self, base: NumberBase) -> &str {
         match base {
             NumberBase::Decimal => &self.decimal,
             NumberBase::Hexadecimal => &self.hexadecimal,
@@ -111,15 +61,14 @@ impl NumberBaseView {
         }
     }
 
-    fn sync_from(&mut self, from: NumberBase, window: &mut Window, cx: &mut Context<Self>) {
+    fn sync_from(&mut self, from: NumberBase) {
         if self.syncing || self.advanced {
             return;
         }
-        let source = self.field(from).read(cx).value().to_string();
+        let source = self.field(from).to_string();
         if source.trim().is_empty() {
             self.error = None;
-            self.clear_others(from, window, cx);
-            cx.notify();
+            self.clear_others(from);
             return;
         }
         let targets = [
@@ -139,12 +88,10 @@ impl NumberBaseView {
                     if self.thousands {
                         text = add_thousands_separators(&text);
                     }
-                    self.field(to).update(cx, |input, cx| {
-                        input.set_value(text, window, cx);
-                    });
+                    *self.field_mut(to) = text;
                 }
                 Err(err) => {
-                    self.error = Some(SharedString::from(err.to_string()));
+                    self.error = Some(err.to_string());
                     failed = true;
                     break;
                 }
@@ -154,10 +101,9 @@ impl NumberBaseView {
             self.error = None;
         }
         self.syncing = false;
-        cx.notify();
     }
 
-    fn clear_others(&mut self, from: NumberBase, window: &mut Window, cx: &mut Context<Self>) {
+    fn clear_others(&mut self, from: NumberBase) {
         self.syncing = true;
         for base in [
             NumberBase::Decimal,
@@ -168,102 +114,165 @@ impl NumberBaseView {
             if base == from {
                 continue;
             }
-            self.field(base).update(cx, |input, cx| {
-                input.set_value(String::new(), window, cx);
-            });
+            self.field_mut(base).clear();
         }
         self.syncing = false;
     }
 
-    fn reconvert_advanced(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+    fn reconvert_advanced(&mut self) {
         if !self.advanced {
             return;
         }
-        let source = self.advanced_input.read(cx).value().to_string();
-        if source.trim().is_empty() {
+        if self.advanced_input.trim().is_empty() {
             self.error = None;
-            self.advanced_output.update(cx, |output, cx| {
-                output.set_value(String::new(), window, cx);
-            });
-            cx.notify();
+            self.advanced_output.clear();
             return;
         }
         let result = if self.use_custom {
-            let alphabet = self.custom_alphabet.read(cx).value().to_string();
-            encode_custom(&source, &alphabet).or_else(|_| decode_custom(&source, &alphabet))
+            encode_custom(&self.advanced_input, &self.custom_alphabet)
+                .or_else(|_| decode_custom(&self.advanced_input, &self.custom_alphabet))
         } else if self.from_encoding == self.to_encoding {
-            encode_rfc4648(&source, self.to_encoding)
+            encode_rfc4648(&self.advanced_input, self.to_encoding)
         } else {
-            convert_rfc4648(&source, self.from_encoding, self.to_encoding)
+            convert_rfc4648(&self.advanced_input, self.from_encoding, self.to_encoding)
         };
         match result {
             Ok(text) => {
                 self.error = None;
-                self.advanced_output.update(cx, |output, cx| {
-                    output.set_value(text, window, cx);
-                });
+                self.advanced_output = text;
             }
             Err(err) => {
-                self.error = Some(SharedString::from(err.to_string()));
-                self.advanced_output.update(cx, |output, cx| {
-                    output.set_value(String::new(), window, cx);
-                });
+                self.error = Some(err.to_string());
+                self.advanced_output.clear();
             }
         }
-        cx.notify();
     }
 
-    fn encoding_button(
-        &self,
-        id: &'static str,
-        label: &'static str,
-        encoding: Rfc4648Encoding,
-        is_from: bool,
-        cx: &mut Context<Self>,
-    ) -> impl IntoElement {
-        let selected = if is_from {
-            self.from_encoding == encoding
-        } else {
-            self.to_encoding == encoding
-        };
-        Button::new(id)
-            .label(label)
-            .compact()
-            .selected(selected)
-            .on_click(cx.listener(move |this, _, window, cx| {
+    fn encoding_row(&mut self, ui: &mut egui::Ui, is_from: bool) {
+        for (label, encoding) in [
+            ("Base16", Rfc4648Encoding::Base16),
+            ("Base32", Rfc4648Encoding::Base32),
+            ("Base32Hex", Rfc4648Encoding::Base32Hex),
+            ("Base64", Rfc4648Encoding::Base64),
+            ("Base64URL", Rfc4648Encoding::Base64Url),
+        ] {
+            let selected = if is_from {
+                self.from_encoding == encoding
+            } else {
+                self.to_encoding == encoding
+            };
+            if ui::toggle(ui, selected, label).clicked() {
                 if is_from {
-                    this.from_encoding = encoding;
+                    self.from_encoding = encoding;
                 } else {
-                    this.to_encoding = encoding;
+                    self.to_encoding = encoding;
                 }
-                this.use_custom = false;
-                this.reconvert_advanced(window, cx);
-            }))
+                self.use_custom = false;
+                self.reconvert_advanced();
+            }
+        }
     }
 
-    fn copy_output(&mut self, cx: &mut Context<Self>) {
-        if self.error.is_some() {
-            return;
+    fn ui_basic(&mut self, ui: &mut egui::Ui) {
+        ui.label("十进制");
+        if ui::singleline(ui, "nb-dec", &mut self.decimal, "十进制") {
+            self.sync_from(NumberBase::Decimal);
         }
-        let text = if self.advanced {
-            self.advanced_output.read(cx).value().to_string()
-        } else {
-            self.hexadecimal.read(cx).value().to_string()
-        };
-        if text.is_empty() {
-            return;
+        ui.label("十六进制");
+        if ui::singleline(ui, "nb-hex", &mut self.hexadecimal, "十六进制") {
+            self.sync_from(NumberBase::Hexadecimal);
         }
-        cx.write_to_clipboard(ClipboardItem::new_string(text));
+        ui.label("八进制");
+        if ui::singleline(ui, "nb-oct", &mut self.octal, "八进制") {
+            self.sync_from(NumberBase::Octal);
+        }
+        ui.label("二进制");
+        if ui::singleline(ui, "nb-bin", &mut self.binary, "二进制") {
+            self.sync_from(NumberBase::Binary);
+        }
+    }
+
+    fn ui_advanced(&mut self, ui: &mut egui::Ui) {
+        ui.label("输入编码");
+        ui.horizontal_wrapped(|ui| {
+            self.encoding_row(ui, true);
+        });
+        ui.label("输出编码");
+        ui.horizontal_wrapped(|ui| {
+            self.encoding_row(ui, false);
+            if ui.checkbox(&mut self.use_custom, "自定义字符表").changed() {
+                self.reconvert_advanced();
+            }
+        });
+        if self.use_custom
+            && ui::singleline(ui, "nb-alpha", &mut self.custom_alphabet, "自定义字符表")
+        {
+            self.reconvert_advanced();
+        }
+        let spacing = 12.0;
+        let total = ui.available_size();
+        let w = ((total.x - spacing) / 2.0).max(80.0);
+        ui.horizontal(|ui| {
+            ui.set_min_height(total.y);
+            ui.allocate_ui(egui::vec2(w, total.y), |ui| {
+                if ui::labeled_code(
+                    ui,
+                    "输入",
+                    "nb-adv-in",
+                    &mut self.advanced_input,
+                    "高级输入",
+                    true,
+                ) {
+                    self.reconvert_advanced();
+                }
+            });
+            ui.add_space(spacing);
+            ui.allocate_ui(egui::vec2(w, total.y), |ui| {
+                ui::labeled_code(
+                    ui,
+                    "输出",
+                    "nb-adv-out",
+                    &mut self.advanced_output,
+                    "高级输出",
+                    false,
+                );
+            });
+        });
     }
 }
 
-impl ReceivesData for NumberBaseView {
-    fn on_data_received(
-        &mut self,
-        payload: &str,
-        window: &mut Window,
-        cx: &mut Context<Self>,
-    ) {
+impl ToolView for NumberBaseView {
+    fn ui(&mut self, ui: &mut egui::Ui) {
+        ui.horizontal_wrapped(|ui| {
+            if ui::toggle(ui, !self.advanced, "基础").clicked() {
+                self.advanced = false;
+                self.error = None;
+            }
+            if ui::toggle(ui, self.advanced, "高级").clicked() {
+                self.advanced = true;
+                self.reconvert_advanced();
+            }
+            if ui.checkbox(&mut self.thousands, "千分位").changed() {
+                self.sync_from(NumberBase::Decimal);
+            }
+            if ui::primary_button(ui, "复制").clicked() && self.error.is_none() {
+                let text = if self.advanced {
+                    &self.advanced_output
+                } else {
+                    &self.hexadecimal
+                };
+                ui::copy_text(ui, text);
+            }
+        });
+        ui::error_label(ui, self.error.as_deref());
+        if self.advanced {
+            self.ui_advanced(ui);
+        } else {
+            self.ui_basic(ui);
+        }
+    }
+
+    fn on_data_received(&mut self, payload: &str) {
         self.advanced = false;
         let trimmed = payload.trim();
         let (base, value) = if let Some(rest) = strip_prefix_ci(trimmed, "0x") {
@@ -276,11 +285,9 @@ impl ReceivesData for NumberBaseView {
             (NumberBase::Decimal, trimmed)
         };
         self.syncing = true;
-        self.field(base).update(cx, |input, cx| {
-            input.set_value(value.to_string(), window, cx);
-        });
+        *self.field_mut(base) = value.to_string();
         self.syncing = false;
-        self.sync_from(base, window, cx);
+        self.sync_from(base);
     }
 }
 
@@ -291,174 +298,4 @@ fn strip_prefix_ci<'a>(text: &'a str, prefix: &str) -> Option<&'a str> {
     } else {
         None
     }
-}
-
-impl Render for NumberBaseView {
-    fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        v_flex()
-            .size_full()
-            .p_4()
-            .gap_3()
-            .child(
-                h_flex()
-                    .gap_2()
-                    .items_center()
-                    .flex_wrap()
-                    .child(
-                        Button::new("mode-basic")
-                            .label("基础")
-                            .compact()
-                            .selected(!self.advanced)
-                            .on_click(cx.listener(|this, _, _, cx| {
-                                this.advanced = false;
-                                this.error = None;
-                                cx.notify();
-                            })),
-                    )
-                    .child(
-                        Button::new("mode-advanced")
-                            .label("高级")
-                            .compact()
-                            .selected(self.advanced)
-                            .on_click(cx.listener(|this, _, window, cx| {
-                                this.advanced = true;
-                                this.reconvert_advanced(window, cx);
-                            })),
-                    )
-                    .child(
-                        Switch::new("thousands")
-                            .label("千分位")
-                            .checked(self.thousands)
-                            .on_click(cx.listener(|this, checked, window, cx| {
-                                this.thousands = *checked;
-                                this.sync_from(NumberBase::Decimal, window, cx);
-                            })),
-                    )
-                    .child(
-                        Button::new("copy-output")
-                            .primary()
-                            .label("复制")
-                            .on_click(cx.listener(|this, _, _, cx| {
-                                this.copy_output(cx);
-                            })),
-                    ),
-            )
-            .when_some(self.error.clone(), |this, message| {
-                this.child(div().text_color(cx.theme().danger).child(message))
-            })
-            .child(if self.advanced {
-                self.render_advanced(cx)
-            } else {
-                self.render_basic()
-            })
-    }
-}
-
-impl NumberBaseView {
-    fn render_basic(&self) -> gpui::AnyElement {
-        v_flex()
-            .gap_2()
-            .child(labeled_input("十进制", &self.decimal))
-            .child(labeled_input("十六进制", &self.hexadecimal))
-            .child(labeled_input("八进制", &self.octal))
-            .child(labeled_input("二进制", &self.binary))
-            .into_any_element()
-    }
-
-    fn render_advanced(&self, cx: &mut Context<Self>) -> gpui::AnyElement {
-        v_flex()
-            .flex_1()
-            .gap_2()
-            .min_h_0()
-            .child("输入编码")
-            .child(
-                h_flex()
-                    .gap_2()
-                    .flex_wrap()
-                    .child(self.encoding_button("from-16", "Base16", Rfc4648Encoding::Base16, true, cx))
-                    .child(self.encoding_button("from-32", "Base32", Rfc4648Encoding::Base32, true, cx))
-                    .child(self.encoding_button(
-                        "from-32h",
-                        "Base32Hex",
-                        Rfc4648Encoding::Base32Hex,
-                        true,
-                        cx,
-                    ))
-                    .child(self.encoding_button("from-64", "Base64", Rfc4648Encoding::Base64, true, cx))
-                    .child(self.encoding_button(
-                        "from-64u",
-                        "Base64URL",
-                        Rfc4648Encoding::Base64Url,
-                        true,
-                        cx,
-                    )),
-            )
-            .child("输出编码")
-            .child(
-                h_flex()
-                    .gap_2()
-                    .flex_wrap()
-                    .child(self.encoding_button("to-16", "Base16", Rfc4648Encoding::Base16, false, cx))
-                    .child(self.encoding_button("to-32", "Base32", Rfc4648Encoding::Base32, false, cx))
-                    .child(self.encoding_button(
-                        "to-32h",
-                        "Base32Hex",
-                        Rfc4648Encoding::Base32Hex,
-                        false,
-                        cx,
-                    ))
-                    .child(self.encoding_button("to-64", "Base64", Rfc4648Encoding::Base64, false, cx))
-                    .child(self.encoding_button(
-                        "to-64u",
-                        "Base64URL",
-                        Rfc4648Encoding::Base64Url,
-                        false,
-                        cx,
-                    ))
-                    .child(
-                        Switch::new("use-custom")
-                            .label("自定义字符表")
-                            .checked(self.use_custom)
-                            .on_click(cx.listener(|this, checked, window, cx| {
-                                this.use_custom = *checked;
-                                this.reconvert_advanced(window, cx);
-                            })),
-                    ),
-            )
-            .when(self.use_custom, |this| {
-                this.child(Input::new(&self.custom_alphabet))
-            })
-            .child(
-                gpui::div()
-                    .flex()
-                    .flex_row()
-                    .flex_1()
-                    .gap_3()
-                    .min_h_0()
-                    .child(
-                        v_flex()
-                            .flex_1()
-                            .gap_1()
-                            .min_h_0()
-                            .child("输入")
-                            .child(Input::new(&self.advanced_input).h_full()),
-                    )
-                    .child(
-                        v_flex()
-                            .flex_1()
-                            .gap_1()
-                            .min_h_0()
-                            .child("输出")
-                            .child(Input::new(&self.advanced_output).h_full().disabled(true)),
-                    ),
-            )
-            .into_any_element()
-    }
-}
-
-fn labeled_input(label: &'static str, input: &Entity<InputState>) -> impl IntoElement {
-    v_flex()
-        .gap_1()
-        .child(label)
-        .child(Input::new(input))
 }

@@ -1,223 +1,167 @@
-use gpui::{
-    div, prelude::*, ClipboardItem, Context, Entity, SharedString, Subscription, Window,
-};
-use gpui_component::button::{Button, ButtonVariants as _};
-use gpui_component::input::{Input, InputEvent, InputState};
-use gpui_component::{h_flex, v_flex};
+use crate::slot::ToolView;
+use crate::ui;
 
-use crate::slot::ReceivesData;
 use super::{apply, stats, Operation, TextStats};
 
 pub struct TextAnalyzerView {
-    input: Entity<InputState>,
+    input: String,
     stats: TextStats,
-    _subscriptions: Vec<Subscription>,
+    cursor_line: usize,
+    cursor_col: usize,
 }
 
 impl TextAnalyzerView {
-    pub fn new(window: &mut Window, cx: &mut Context<Self>) -> Self {
-        let input = cx.new(|cx| {
-            InputState::new(window, cx)
-                .multi_line(true)
-                .rows(12)
-                .placeholder("粘贴或输入文本")
-        });
-
-        let subscriptions = vec![cx.subscribe_in(
-            &input,
-            window,
-            |this, _, event: &InputEvent, _, cx| {
-                if matches!(event, InputEvent::Change) {
-                    this.refresh_stats(cx);
-                }
-            },
-        )];
-
+    pub fn new() -> Self {
         Self {
-            input,
+            input: String::new(),
             stats: stats(""),
-            _subscriptions: subscriptions,
+            cursor_line: 1,
+            cursor_col: 1,
         }
     }
 
-    fn refresh_stats(&mut self, cx: &mut Context<Self>) {
-        let source = self.input.read(cx).value().to_string();
-        self.stats = stats(&source);
-        cx.notify();
+    fn refresh_stats(&mut self) {
+        self.stats = stats(&self.input);
     }
 
-    fn apply_op(&mut self, op: Operation, window: &mut Window, cx: &mut Context<Self>) {
-        let source = self.input.read(cx).value().to_string();
+    fn apply_op(&mut self, op: Operation) {
         let mut rng = rand::thread_rng();
-        let result = apply(&source, &[op], &mut rng);
-        self.input.update(cx, |input, cx| {
-            input.set_value(result, window, cx);
+        self.input = apply(&self.input, &[op], &mut rng);
+        self.refresh_stats();
+    }
+}
+
+impl ToolView for TextAnalyzerView {
+    fn ui(&mut self, ui: &mut egui::Ui) {
+        ui.label("换行");
+        ui.horizontal_wrapped(|ui| {
+            if ui.button("LF").clicked() {
+                self.apply_op(Operation::LineEndingsLf);
+            }
+            if ui.button("CRLF").clicked() {
+                self.apply_op(Operation::LineEndingsCrlf);
+            }
         });
-        self.refresh_stats(cx);
-    }
-
-    fn op_button(
-        &self,
-        id: &'static str,
-        label: &'static str,
-        op: Operation,
-        cx: &mut Context<Self>,
-    ) -> impl IntoElement {
-        Button::new(id)
-            .label(label)
-            .compact()
-            .on_click(cx.listener(move |this, _, window, cx| {
-                this.apply_op(op, window, cx);
-            }))
-    }
-
-    fn copy_text(&mut self, cx: &mut Context<Self>) {
-        let text = self.input.read(cx).value().to_string();
-        if text.is_empty() {
-            return;
+        ui.label("大小写");
+        ui.horizontal_wrapped(|ui| {
+            for (label, op) in [
+                ("小写", Operation::Lower),
+                ("大写", Operation::Upper),
+                ("句首", Operation::Sentence),
+                ("标题", Operation::Title),
+                ("camel", Operation::Camel),
+                ("Pascal", Operation::Pascal),
+                ("snake", Operation::Snake),
+                ("CONSTANT", Operation::Constant),
+                ("kebab", Operation::Kebab),
+                ("COBOL", Operation::Cobol),
+                ("Train", Operation::Train),
+                ("交替", Operation::Alternating),
+                ("反转", Operation::Inverse),
+                ("随机", Operation::RandomCase),
+            ] {
+                if ui.button(label).clicked() {
+                    self.apply_op(op);
+                }
+            }
+        });
+        ui.label("行");
+        ui.horizontal_wrapped(|ui| {
+            for (label, op) in [
+                ("字母序", Operation::SortLines),
+                ("倒序", Operation::SortLinesDesc),
+                ("按末词", Operation::SortByLastWord),
+                ("按末词倒序", Operation::SortByLastWordDesc),
+                ("反转行", Operation::ReverseLines),
+                ("打乱行", Operation::ShuffleLines),
+            ] {
+                if ui.button(label).clicked() {
+                    self.apply_op(op);
+                }
+            }
+            if ui::primary_button(ui, "复制").clicked() {
+                ui::copy_text(ui, &self.input);
+            }
+        });
+        let cursor_line = self.cursor_line;
+        let cursor_col = self.cursor_col;
+        let mut input_changed = false;
+        ui::split_2(
+            ui,
+            |ui| {
+                ui.vertical(|ui| {
+                    ui.label("输入");
+                    input_changed =
+                        ui::fill_code(ui, "text-in", &mut self.input, "粘贴或输入文本", true);
+                    let id = ui.id().with(egui::Id::new("text-in"));
+                    if let Some(state) = egui::TextEdit::load_state(ui.ctx(), id) {
+                        if let Some(range) = state.cursor.char_range() {
+                            let (line, col) = line_col_at(&self.input, range.primary.index.0);
+                            self.cursor_line = line;
+                            self.cursor_col = col;
+                        }
+                    }
+                });
+            },
+            |ui| {
+                ui.vertical(|ui| {
+                    ui.label("统计");
+                    let s = &self.stats;
+                    stat_row(ui, "选区行", &format!("{cursor_line}"));
+                    stat_row(ui, "选区列", &format!("{cursor_col}"));
+                    stat_row(ui, "字节", &format!("{}", s.bytes));
+                    stat_row(ui, "字符", &format!("{}", s.chars));
+                    stat_row(ui, "词", &format!("{}", s.words));
+                    stat_row(ui, "句", &format!("{}", s.sentences));
+                    stat_row(ui, "段", &format!("{}", s.paragraphs));
+                    stat_row(ui, "行", &format!("{}", s.lines));
+                    stat_row(ui, "换行", s.eol.as_str());
+                    ui.add_space(8.0);
+                    ui.label("词频");
+                    for (k, v) in top_word_freq(&s.word_freq) {
+                        stat_row(ui, &k, &v);
+                    }
+                    ui.add_space(8.0);
+                    ui.label("字符频");
+                    for (k, v) in top_char_freq(&s.char_freq) {
+                        stat_row(ui, &k, &v);
+                    }
+                });
+            },
+        );
+        if input_changed {
+            self.refresh_stats();
         }
-        cx.write_to_clipboard(ClipboardItem::new_string(text));
     }
 
-    fn stat_row(label: &'static str, value: impl Into<SharedString>) -> impl IntoElement {
-        h_flex()
-            .gap_2()
-            .child(div().min_w(px_label()).child(label))
-            .child(value.into())
+    fn on_data_received(&mut self, payload: &str) {
+        self.input = payload.to_string();
+        self.refresh_stats();
     }
 }
 
-fn px_label() -> gpui::Pixels {
-    gpui::px(72.)
+fn stat_row(ui: &mut egui::Ui, label: &str, value: &str) {
+    ui.horizontal(|ui| {
+        ui.add_sized([72.0, 18.0], egui::Label::new(label));
+        ui.label(value);
+    });
 }
 
-impl ReceivesData for TextAnalyzerView {
-    fn on_data_received(
-        &mut self,
-        payload: &str,
-        window: &mut Window,
-        cx: &mut Context<Self>,
-    ) {
-        self.input.update(cx, |input, cx| {
-            input.set_value(payload.to_string(), window, cx);
-        });
-        self.refresh_stats(cx);
+fn line_col_at(text: &str, char_index: usize) -> (usize, usize) {
+    let mut line = 1usize;
+    let mut col = 1usize;
+    for (i, ch) in text.chars().enumerate() {
+        if i >= char_index {
+            break;
+        }
+        if ch == '\n' {
+            line += 1;
+            col = 1;
+        } else {
+            col += 1;
+        }
     }
-}
-
-impl Render for TextAnalyzerView {
-    fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        let cursor = self.input.read(cx).cursor_position();
-        let s = &self.stats;
-
-        v_flex()
-            .size_full()
-            .p_4()
-            .gap_3()
-            .child(
-                v_flex()
-                    .gap_1()
-                    .child("换行")
-                    .child(
-                        h_flex()
-                            .gap_2()
-                            .flex_wrap()
-                            .child(self.op_button("eol-lf", "LF", Operation::LineEndingsLf, cx))
-                            .child(self.op_button("eol-crlf", "CRLF", Operation::LineEndingsCrlf, cx)),
-                    )
-                    .child("大小写")
-                    .child(
-                        h_flex()
-                            .gap_2()
-                            .flex_wrap()
-                            .child(self.op_button("case-lower", "小写", Operation::Lower, cx))
-                            .child(self.op_button("case-upper", "大写", Operation::Upper, cx))
-                            .child(self.op_button("case-sentence", "句首", Operation::Sentence, cx))
-                            .child(self.op_button("case-title", "标题", Operation::Title, cx))
-                            .child(self.op_button("case-camel", "camel", Operation::Camel, cx))
-                            .child(self.op_button("case-pascal", "Pascal", Operation::Pascal, cx))
-                            .child(self.op_button("case-snake", "snake", Operation::Snake, cx))
-                            .child(self.op_button("case-const", "CONSTANT", Operation::Constant, cx))
-                            .child(self.op_button("case-kebab", "kebab", Operation::Kebab, cx))
-                            .child(self.op_button("case-cobol", "COBOL", Operation::Cobol, cx))
-                            .child(self.op_button("case-train", "Train", Operation::Train, cx))
-                            .child(self.op_button("case-alt", "交替", Operation::Alternating, cx))
-                            .child(self.op_button("case-inv", "反转", Operation::Inverse, cx))
-                            .child(self.op_button("case-rand", "随机", Operation::RandomCase, cx)),
-                    )
-                    .child("行")
-                    .child(
-                        h_flex()
-                            .gap_2()
-                            .flex_wrap()
-                            .child(self.op_button("sort-asc", "字母序", Operation::SortLines, cx))
-                            .child(self.op_button("sort-desc", "倒序", Operation::SortLinesDesc, cx))
-                            .child(self.op_button("sort-last", "按末词", Operation::SortByLastWord, cx))
-                            .child(self.op_button(
-                                "sort-last-desc",
-                                "按末词倒序",
-                                Operation::SortByLastWordDesc,
-                                cx,
-                            ))
-                            .child(self.op_button("rev-lines", "反转行", Operation::ReverseLines, cx))
-                            .child(self.op_button("shuffle", "打乱行", Operation::ShuffleLines, cx))
-                            .child(
-                                Button::new("copy-text")
-                                    .primary()
-                                    .label("复制")
-                                    .on_click(cx.listener(|this, _, _, cx| {
-                                        this.copy_text(cx);
-                                    })),
-                            ),
-                    ),
-            )
-            .child(
-                gpui::div()
-                    .flex()
-                    .flex_row()
-                    .flex_1()
-                    .gap_3()
-                    .min_h_0()
-                    .child(
-                        v_flex()
-                            .flex_1()
-                            .gap_1()
-                            .min_h_0()
-                            .child("输入")
-                            .child(Input::new(&self.input).h_full()),
-                    )
-                    .child(
-                        v_flex()
-                            .w(gpui::px(260.))
-                            .gap_1()
-                            .min_h_0()
-                            .child("统计")
-                            .child(Self::stat_row("选区行", format!("{}", cursor.line + 1)))
-                            .child(Self::stat_row("选区列", format!("{}", cursor.character + 1)))
-                            .child(Self::stat_row("字节", format!("{}", s.bytes)))
-                            .child(Self::stat_row("字符", format!("{}", s.chars)))
-                            .child(Self::stat_row("词", format!("{}", s.words)))
-                            .child(Self::stat_row("句", format!("{}", s.sentences)))
-                            .child(Self::stat_row("段", format!("{}", s.paragraphs)))
-                            .child(Self::stat_row("行", format!("{}", s.lines)))
-                            .child(Self::stat_row("换行", s.eol.as_str()))
-                            .child(div().mt_2().child("词频"))
-                            .children(top_word_freq(&s.word_freq).into_iter().map(|(k, v)| {
-                                h_flex()
-                                    .gap_2()
-                                    .child(div().min_w(px_label()).child(k))
-                                    .child(v)
-                            }))
-                            .child(div().mt_2().child("字符频"))
-                            .children(top_char_freq(&s.char_freq).into_iter().map(|(k, v)| {
-                                h_flex()
-                                    .gap_2()
-                                    .child(div().min_w(px_label()).child(k))
-                                    .child(v)
-                            })),
-                    ),
-            )
-    }
+    (line, col)
 }
 
 fn top_word_freq(map: &std::collections::HashMap<String, usize>) -> Vec<(String, String)> {
@@ -237,7 +181,11 @@ fn top_char_freq(map: &std::collections::HashMap<char, usize>) -> Vec<(String, S
         .into_iter()
         .take(12)
         .map(|(k, v)| {
-            let label = if *k == ' ' { "⎵".to_string() } else { k.to_string() };
+            let label = if *k == ' ' {
+                "⎵".to_string()
+            } else {
+                k.to_string()
+            };
             (label, v.to_string())
         })
         .collect()

@@ -26,7 +26,11 @@ impl CronParseResult {
         if self.next.is_empty() {
             self.description.clone()
         } else {
-            format!("{}\n\n下次执行：\n{}", self.description, self.next.join("\n"))
+            format!(
+                "{}\n\n下次执行：\n{}",
+                self.description,
+                self.next.join("\n")
+            )
         }
     }
 }

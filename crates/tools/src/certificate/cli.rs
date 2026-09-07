@@ -25,11 +25,7 @@ fn configure(cmd: Command) -> Command {
             .required(true)
             .help("输入文件路径或内联 PEM"),
     )
-    .arg(
-        Arg::new("password")
-            .short('p')
-            .help("PFX 密码"),
-    )
+    .arg(Arg::new("password").short('p').help("PFX 密码"))
     .arg(
         Arg::new("output")
             .short('o')
@@ -43,8 +39,12 @@ fn run(matches: &ArgMatches) -> Result<(), CliError> {
         .ok_or_else(|| CliError::new("缺少输入"))?;
     let password = matches.get_one::<String>("password").map(String::as_str);
     let bytes = read_bytes(input)?;
-    let result = decode_certificate(&bytes, password).map_err(|err| CliError::new(err.to_string()))?;
-    write_output(matches.get_one::<String>("output").map(String::as_str), &result)
+    let result =
+        decode_certificate(&bytes, password).map_err(|err| CliError::new(err.to_string()))?;
+    write_output(
+        matches.get_one::<String>("output").map(String::as_str),
+        &result,
+    )
 }
 
 fn read_bytes(input: &str) -> Result<Vec<u8>, CliError> {

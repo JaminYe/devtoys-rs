@@ -42,7 +42,10 @@ fn run(matches: &ArgMatches) -> Result<(), CliError> {
     let source = read_input(input)?;
     let format = parse_format(matches.get_one::<String>("format").map(String::as_str))?;
     let table = json_to_table(&source, format).map_err(|err| CliError::new(err.to_string()))?;
-    write_output(matches.get_one::<String>("output").map(String::as_str), &table)
+    write_output(
+        matches.get_one::<String>("output").map(String::as_str),
+        &table,
+    )
 }
 
 fn parse_format(value: Option<&str>) -> Result<TableFormat, CliError> {

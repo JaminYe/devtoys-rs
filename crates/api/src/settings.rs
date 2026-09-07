@@ -21,7 +21,7 @@ pub struct WindowState {
 /// User preferences persisted as `devtoys-rs/settings.json`.
 ///
 /// `smart_detection_paste` is ignored at runtime when `smart_detection_enabled`
-/// is false. Favorites and recent tool IDs are stored here so they survive restart.
+/// is false. Favorites tool IDs are stored here so they survive restart.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct AppSettings {
     #[serde(default)]
@@ -30,12 +30,8 @@ pub struct AppSettings {
     pub smart_detection_enabled: bool,
     #[serde(default = "default_true")]
     pub smart_detection_paste: bool,
-    #[serde(default = "default_true")]
-    pub show_recent: bool,
     #[serde(default)]
     pub favorites: Vec<String>,
-    #[serde(default)]
-    pub recent: Vec<String>,
     #[serde(default)]
     pub window: Option<WindowState>,
 }
@@ -50,9 +46,7 @@ impl Default for AppSettings {
             theme: ThemePreference::System,
             smart_detection_enabled: true,
             smart_detection_paste: true,
-            show_recent: true,
             favorites: Vec::new(),
-            recent: Vec::new(),
             window: None,
         }
     }

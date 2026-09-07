@@ -134,8 +134,7 @@ fn maybe_rewrite_attrs(
     for attr in start.attributes() {
         let attr = attr.map_err(|_| XmlFormatError::InvalidXml)?;
         has_attr = true;
-        let key =
-            std::str::from_utf8(attr.key.as_ref()).map_err(|_| XmlFormatError::InvalidXml)?;
+        let key = std::str::from_utf8(attr.key.as_ref()).map_err(|_| XmlFormatError::InvalidXml)?;
         let value = std::str::from_utf8(&attr.value).map_err(|_| XmlFormatError::InvalidXml)?;
         content.push('\n');
         content.push_str(&attr_indent);
@@ -185,12 +184,7 @@ mod tests {
 
     #[test]
     fn minified() {
-        let got = format_xml(
-            "<root>\n  <a>1</a>\n</root>",
-            Indentation::Minified,
-            false,
-        )
-        .unwrap();
+        let got = format_xml("<root>\n  <a>1</a>\n</root>", Indentation::Minified, false).unwrap();
         assert_eq!(got, "<root><a>1</a></root>");
     }
 
@@ -203,12 +197,7 @@ mod tests {
 
     #[test]
     fn attributes_on_new_lines() {
-        let got = format_xml(
-            r#"<root a="1" b="2"/>"#,
-            Indentation::TwoSpaces,
-            true,
-        )
-        .unwrap();
+        let got = format_xml(r#"<root a="1" b="2"/>"#, Indentation::TwoSpaces, true).unwrap();
         assert_eq!(got, "<root\n  a=\"1\"\n  b=\"2\"/>");
     }
 

@@ -81,7 +81,10 @@ pub fn looks_like_base64(input: &str) -> bool {
     decode_bytes(trimmed, false).is_ok()
 }
 
-fn map_lines(input: &str, mut each: impl FnMut(&str) -> Result<String, Base64TextError>) -> Result<String, Base64TextError> {
+fn map_lines(
+    input: &str,
+    mut each: impl FnMut(&str) -> Result<String, Base64TextError>,
+) -> Result<String, Base64TextError> {
     let mut out = String::new();
     for (i, line) in input.split('\n').enumerate() {
         if i > 0 {
@@ -98,7 +101,11 @@ fn encode_one(input: &str, charset: Charset) -> Result<String, Base64TextError> 
     Ok(STANDARD.encode(bytes))
 }
 
-fn decode_one(input: &str, charset: Charset, ignore_whitespace: bool) -> Result<String, Base64TextError> {
+fn decode_one(
+    input: &str,
+    charset: Charset,
+    ignore_whitespace: bool,
+) -> Result<String, Base64TextError> {
     let bytes = decode_bytes(input, ignore_whitespace)?;
     from_bytes(&bytes, charset)
 }
@@ -117,7 +124,9 @@ fn to_bytes(input: &str, charset: Charset) -> Result<Vec<u8>, Base64TextError> {
 
 fn from_bytes(bytes: &[u8], charset: Charset) -> Result<String, Base64TextError> {
     match charset {
-        Charset::Utf8 => String::from_utf8(bytes.to_vec()).map_err(|_| Base64TextError::InvalidBase64),
+        Charset::Utf8 => {
+            String::from_utf8(bytes.to_vec()).map_err(|_| Base64TextError::InvalidBase64)
+        }
         Charset::Ascii => {
             if !bytes.is_ascii() {
                 return Err(Base64TextError::NotAscii);
@@ -129,7 +138,10 @@ fn from_bytes(bytes: &[u8], charset: Charset) -> Result<String, Base64TextError>
 
 fn decode_bytes(input: &str, ignore_whitespace: bool) -> Result<Vec<u8>, Base64TextError> {
     let prepared = if ignore_whitespace {
-        input.chars().filter(|c| !c.is_whitespace()).collect::<String>()
+        input
+            .chars()
+            .filter(|c| !c.is_whitespace())
+            .collect::<String>()
     } else {
         input.trim().to_string()
     };
@@ -159,7 +171,10 @@ mod tests {
         let err = decode("not-base64!", Charset::Utf8, false).unwrap_err();
         assert_eq!(err, Base64TextError::InvalidBase64);
         let message = err.to_string();
-        assert!(!message.contains("not-base64"), "error must not include user input");
+        assert!(
+            !message.contains("not-base64"),
+            "error must not include user input"
+        );
     }
 
     #[test]

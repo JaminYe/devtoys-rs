@@ -171,8 +171,14 @@ mod tests {
         let secret = "this-must-not-appear-in-errors-xyz";
         let path = std::env::temp_dir().join("devtoys-hash-missing-no-such-file.bin");
         let _ = std::fs::remove_file(&path);
-        let err = compute_hash(path.to_str().unwrap(), HashAlgorithm::Md5, None, false, true)
-            .unwrap_err();
+        let err = compute_hash(
+            path.to_str().unwrap(),
+            HashAlgorithm::Md5,
+            None,
+            false,
+            true,
+        )
+        .unwrap_err();
         assert_eq!(err, HashError::FileRead);
         let message = err.to_string();
         assert!(!message.contains(secret));

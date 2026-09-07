@@ -68,7 +68,12 @@ fn strip_data_uri(input: &str) -> &str {
 }
 
 fn sniff_mime(bytes: &[u8]) -> Option<(&'static str, &'static str)> {
-    if bytes.len() >= 4 && bytes[0] == 0x89 && bytes[1] == 0x50 && bytes[2] == 0x4E && bytes[3] == 0x47 {
+    if bytes.len() >= 4
+        && bytes[0] == 0x89
+        && bytes[1] == 0x50
+        && bytes[2] == 0x4E
+        && bytes[3] == 0x47
+    {
         return Some(("image/png", "PNG"));
     }
     if bytes.len() >= 3 && bytes[0] == 0xFF && bytes[1] == 0xD8 && bytes[2] == 0xFF {
@@ -116,6 +121,9 @@ mod tests {
         let err = decode_base64("not-an-image!!!").unwrap_err();
         assert_eq!(err, Base64ImageError::InvalidImage);
         let message = err.to_string();
-        assert!(!message.contains("not-an-image"), "error must not include user input");
+        assert!(
+            !message.contains("not-an-image"),
+            "error must not include user input"
+        );
     }
 }

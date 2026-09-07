@@ -182,6 +182,8 @@ mod tests {
         let got = generate_password(&options, &mut rng).unwrap();
         let lines: Vec<&str> = got.lines().collect();
         assert_eq!(lines.len(), 3);
-        assert!(lines.iter().all(|line| line.chars().all(|c| c.is_ascii_digit())));
+        assert!(lines
+            .iter()
+            .all(|line| line.chars().all(|c| c.is_ascii_digit())));
     }
 }

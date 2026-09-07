@@ -58,10 +58,7 @@ mod tests {
     fn mixed_paths_do_not_match() {
         let detector = StaticImageFilesDetector;
         assert!(detector
-            .detect(
-                &RawData::Files(vec![]),
-                Some(&files_parent("a.png\nb.txt")),
-            )
+            .detect(&RawData::Files(vec![]), Some(&files_parent("a.png\nb.txt")),)
             .is_none());
         assert!(detector.detect(&RawData::Files(vec![]), None).is_none());
     }

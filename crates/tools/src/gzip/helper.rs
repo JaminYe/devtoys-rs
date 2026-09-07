@@ -74,6 +74,9 @@ mod tests {
         let err = decompress("not-gzip-payload").unwrap_err();
         assert_eq!(err, GzipError::InvalidGzip);
         let message = err.to_string();
-        assert!(!message.contains("not-gzip-payload"), "error must not include user input");
+        assert!(
+            !message.contains("not-gzip-payload"),
+            "error must not include user input"
+        );
     }
 }

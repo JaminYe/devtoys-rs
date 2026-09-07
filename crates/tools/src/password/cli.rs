@@ -23,11 +23,28 @@ fn configure(cmd: Command) -> Command {
             .value_parser(clap::value_parser!(usize))
             .default_value("30"),
     )
-    .arg(bool_flag("uppercase", 'u', "uppercase", "包含大写字母", true))
-    .arg(bool_flag("lowercase", 'm', "lowercase", "包含小写字母", true))
+    .arg(bool_flag(
+        "uppercase",
+        'u',
+        "uppercase",
+        "包含大写字母",
+        true,
+    ))
+    .arg(bool_flag(
+        "lowercase",
+        'm',
+        "lowercase",
+        "包含小写字母",
+        true,
+    ))
     .arg(bool_flag("digits", 'd', "digits", "包含数字", true))
     .arg(bool_flag("special", 's', "special", "包含特殊字符", true))
-    .arg(Arg::new("exclude").short('e').long("exclude").help("排除字符"))
+    .arg(
+        Arg::new("exclude")
+            .short('e')
+            .long("exclude")
+            .help("排除字符"),
+    )
     .arg(
         Arg::new("count")
             .long("count")

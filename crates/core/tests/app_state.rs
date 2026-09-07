@@ -42,13 +42,11 @@ fn bootstrap_loads_existing_settings() {
     let mut saved = AppSettings::default();
     saved.theme = ThemePreference::Light;
     saved.favorites = vec!["b".into()];
-    saved.recent = vec!["c".into()];
     store.save(&saved).unwrap();
 
     let state = AppState::bootstrap(tools(), SettingsStore::in_dir(dir.path()));
     assert_eq!(state.settings().theme, ThemePreference::Light);
     assert_eq!(ids(state.favorite_tools()), vec!["b"]);
-    assert_eq!(ids(state.recent_tools()), vec!["c"]);
 }
 
 #[test]
@@ -85,75 +83,16 @@ fn toggle_favorite_persists_in_list_order() {
 }
 
 #[test]
-fn open_tool_records_recent_max_three_newest_first() {
-    let dir = tempfile::tempdir().unwrap();
-    let mut state = AppState::bootstrap(tools(), SettingsStore::in_dir(dir.path()));
-
-    state.open_tool("a").unwrap();
-    state.open_tool("b").unwrap();
-    state.open_tool("c").unwrap();
-    assert_eq!(ids(state.recent_tools()), vec!["c", "b", "a"]);
-
-    state.open_tool("d").unwrap();
-    assert_eq!(ids(state.recent_tools()), vec!["d", "c", "b"]);
-
-    state.open_tool("c").unwrap();
-    assert_eq!(ids(state.recent_tools()), vec!["c", "d", "b"]);
-
-    let reloaded = AppState::bootstrap(tools(), SettingsStore::in_dir(dir.path()));
-    assert_eq!(ids(reloaded.recent_tools()), vec!["c", "d", "b"]);
-}
-
-#[test]
-fn open_unknown_id_does_not_record_recent() {
-    let dir = tempfile::tempdir().unwrap();
-    let mut state = AppState::bootstrap(vec![meta("a", true)], SettingsStore::in_dir(dir.path()));
-
-    state.open_tool(SETTINGS_ID).unwrap();
-    state.open_tool("ghost").unwrap();
-    assert!(state.recent_tools().is_empty());
-    assert!(state.settings().recent.is_empty());
-}
-
-#[test]
-fn recent_tools_empty_when_hidden_or_unknown() {
-    let dir = tempfile::tempdir().unwrap();
-    let store = SettingsStore::in_dir(dir.path());
-    let mut saved = AppSettings::default();
-    saved.recent = vec!["ghost".into(), "a".into(), "b".into()];
-    store.save(&saved).unwrap();
-
-    let mut state = AppState::bootstrap(
-        vec![meta("a", true), meta("b", true)],
-        SettingsStore::in_dir(dir.path()),
-    );
-    assert_eq!(ids(state.recent_tools()), vec!["a", "b"]);
-
-    state.set_show_recent(false).unwrap();
-    assert!(state.recent_tools().is_empty());
-    assert_eq!(state.settings().recent, vec!["ghost", "a", "b"]);
-
-    let reloaded = AppState::bootstrap(
-        vec![meta("a", true), meta("b", true)],
-        SettingsStore::in_dir(dir.path()),
-    );
-    assert!(!reloaded.settings().show_recent);
-    assert!(reloaded.recent_tools().is_empty());
-}
-
-#[test]
 fn setters_persist_immediately() {
     let dir = tempfile::tempdir().unwrap();
     let mut state = AppState::bootstrap(tools(), SettingsStore::in_dir(dir.path()));
 
     state.set_theme(ThemePreference::Dark).unwrap();
     state.set_smart_detection_paste(false).unwrap();
-    state.set_show_recent(false).unwrap();
 
     let reloaded = AppState::bootstrap(tools(), SettingsStore::in_dir(dir.path()));
     assert_eq!(reloaded.settings().theme, ThemePreference::Dark);
     assert!(!reloaded.settings().smart_detection_paste);
-    assert!(!reloaded.settings().show_recent);
     assert!(reloaded.settings().smart_detection_enabled);
 }
 

@@ -1,88 +1,93 @@
 use std::fs;
 use std::path::Path;
 
-use gpui::{
-    div, prelude::*, ClipboardItem, Context, Entity, SharedString, Subscription, Window,
-};
-use gpui_component::button::{Button, ButtonVariants as _};
-use gpui_component::input::{Input, InputEvent, InputState};
-use gpui_component::{h_flex, v_flex, ActiveTheme};
+use crate::slot::ToolView;
+use crate::ui;
 
-use crate::slot::ReceivesData;
 use super::{decode_base64, encode_bytes, inspect_image};
 
 pub struct Base64ImageView {
-    input: Entity<InputState>,
-    preview: Option<SharedString>,
-    error: Option<SharedString>,
-    _subscriptions: Vec<Subscription>,
+    input: String,
+    preview: Option<String>,
+    decoded: Option<Vec<u8>>,
+    tex: Option<egui::TextureHandle>,
+    error: Option<String>,
 }
 
 impl Base64ImageView {
-    pub fn new(window: &mut Window, cx: &mut Context<Self>) -> Self {
-        let input = cx.new(|cx| {
-            InputState::new(window, cx)
-                .multi_line(true)
-                .rows(12)
-                .placeholder("粘贴 Base64 或 data URI")
-        });
-
-        let subscriptions = vec![cx.subscribe_in(
-            &input,
-            window,
-            |this, _, event: &InputEvent, window, cx| {
-                if matches!(event, InputEvent::Change) {
-                    this.refresh(window, cx);
-                }
-            },
-        )];
-
+    pub fn new() -> Self {
         Self {
-            input,
+            input: String::new(),
             preview: None,
+            decoded: None,
+            tex: None,
             error: None,
-            _subscriptions: subscriptions,
         }
     }
 
-    fn refresh(&mut self, _window: &mut Window, cx: &mut Context<Self>) {
-        let source = self.input.read(cx).value().to_string();
-        if source.trim().is_empty() {
+    fn refresh(&mut self) {
+        if self.input.trim().is_empty() {
             self.error = None;
             self.preview = None;
-            cx.notify();
+            self.decoded = None;
+            self.tex = None;
             return;
         }
-        match decode_base64(&source) {
+        match decode_base64(&self.input) {
             Ok(bytes) => {
                 self.error = None;
-                self.preview = Some(SharedString::from(inspect_image(&bytes).summary()));
+                self.preview = Some(inspect_image(&bytes).summary());
+                self.decoded = Some(bytes);
+                self.tex = None;
             }
             Err(err) => {
                 self.preview = None;
-                self.error = Some(SharedString::from(err.to_string()));
+                self.decoded = None;
+                self.tex = None;
+                self.error = Some(err.to_string());
             }
         }
-        cx.notify();
-    }
-
-    fn copy_input(&mut self, cx: &mut Context<Self>) {
-        let text = self.input.read(cx).value().to_string();
-        if text.is_empty() {
-            return;
-        }
-        cx.write_to_clipboard(ClipboardItem::new_string(text));
     }
 }
 
-impl ReceivesData for Base64ImageView {
-    fn on_data_received(
-        &mut self,
-        payload: &str,
-        window: &mut Window,
-        cx: &mut Context<Self>,
-    ) {
-        let text = if Path::new(payload).is_file() {
+impl ToolView for Base64ImageView {
+    fn ui(&mut self, ui: &mut egui::Ui) {
+        ui.horizontal_wrapped(|ui| {
+            if ui::primary_button(ui, "复制").clicked() {
+                ui::copy_text(ui, &self.input);
+            }
+        });
+        ui::error_label(ui, self.error.as_deref());
+        if let Some(summary) = &self.preview {
+            ui.label(format!("预览：{summary}"));
+        }
+
+        let mut changed = false;
+        ui::split_2(
+            ui,
+            |ui| {
+                changed = ui::labeled_code(
+                    ui,
+                    "Base64",
+                    "b64-in",
+                    &mut self.input,
+                    "粘贴 Base64 或 data URI",
+                    true,
+                );
+            },
+            |ui| {
+                if let Some(bytes) = self.decoded.as_deref() {
+                    show_png(ui, "b64-preview", bytes, &mut self.tex);
+                }
+            },
+        );
+        if changed {
+            self.refresh();
+        }
+    }
+
+    fn on_data_received(&mut self, payload: &str) {
+        self.input = if Path::new(payload).is_file() {
             match fs::read(payload) {
                 Ok(bytes) => encode_bytes(&bytes),
                 Err(_) => payload.to_string(),
@@ -90,50 +95,22 @@ impl ReceivesData for Base64ImageView {
         } else {
             payload.to_string()
         };
-        self.input.update(cx, |input, cx| {
-            input.set_value(text, window, cx);
-        });
-        self.refresh(window, cx);
+        self.refresh();
     }
 }
 
-impl Render for Base64ImageView {
-    fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        v_flex()
-            .size_full()
-            .p_4()
-            .gap_3()
-            .child(
-                h_flex()
-                    .gap_2()
-                    .items_center()
-                    .flex_wrap()
-                    .child(
-                        Button::new("copy-output")
-                            .primary()
-                            .label("复制")
-                            .on_click(cx.listener(|this, _, _, cx| {
-                                this.copy_input(cx);
-                            })),
-                    ),
-            )
-            .when_some(self.error.clone(), |this, message| {
-                this.child(
-                    div()
-                        .text_color(cx.theme().danger)
-                        .child(message),
-                )
-            })
-            .when_some(self.preview.clone(), |this, summary| {
-                this.child(div().child(format!("预览：{summary}")))
-            })
-            .child(
-                v_flex()
-                    .flex_1()
-                    .gap_1()
-                    .min_h_0()
-                    .child("Base64")
-                    .child(Input::new(&self.input).h_full()),
-            )
+fn show_png(
+    ui: &mut egui::Ui,
+    name: &'static str,
+    bytes: &[u8],
+    cache: &mut Option<egui::TextureHandle>,
+) {
+    if cache.is_none() {
+        if let Some(color) = ui::png_image(bytes) {
+            *cache = Some(ui.ctx().load_texture(name, color, Default::default()));
+        }
+    }
+    if let Some(tex) = cache.as_ref() {
+        ui.add(egui::Image::new(tex).max_size(ui.available_size()));
     }
 }

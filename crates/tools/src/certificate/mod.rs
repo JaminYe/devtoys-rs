@@ -4,9 +4,12 @@ mod helper;
 #[cfg(feature = "gui")]
 mod view;
 
-use devtoys_api::{Detector, GroupId, ToolId, ToolMetadata};
-
+use crate::catalog::Tool;
+use crate::cli::CliTool;
+#[cfg(feature = "gui")]
+use crate::slot::ToolHandle;
 pub use cli::cli_tool;
+use devtoys_api::{Detector, GroupId, ToolId, ToolMetadata};
 pub use helper::{decode_certificate, looks_like_pem_certificate, CertificateError};
 
 #[cfg(feature = "gui")]
@@ -32,6 +35,51 @@ pub fn detectors() -> Vec<Box<dyn Detector>> {
 }
 
 #[cfg(feature = "gui")]
-pub fn open_view(window: &mut gpui::Window, cx: &mut gpui::App) -> crate::slot::ToolHandle {
-    crate::slot::ToolHandle::open(window, cx, CertificateView::new)
+pub fn open_view() -> crate::slot::ToolHandle {
+    Box::new(CertificateView::new())
+}
+
+#[derive(Default, Debug, Clone, Copy)]
+pub struct CertificateTool;
+
+impl Tool for CertificateTool {
+    fn metadata(&self) -> ToolMetadata {
+        metadata()
+    }
+
+    fn cli(&self) -> Option<CliTool> {
+        Some(cli_tool())
+    }
+
+    fn detectors(&self) -> Vec<Box<dyn Detector>> {
+        detectors()
+    }
+
+    #[cfg(feature = "gui")]
+    fn create_view(&self) -> Option<ToolHandle> {
+        Some(open_view())
+    }
+}
+
+#[allow(dead_code)]
+pub fn tool() -> Box<dyn Tool> {
+    Box::new(CertificateTool)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn certificate_tool_implements_tool() {
+        let tool = CertificateTool;
+        assert_eq!(tool.metadata().id.as_str(), ID);
+        assert!(tool.cli().is_some());
+        assert!(!tool.detectors().is_empty());
+        #[cfg(feature = "gui")]
+        assert!(tool.create_view().is_some());
+
+        let boxed = super::tool();
+        assert_eq!(boxed.metadata().id.as_str(), ID);
+    }
 }

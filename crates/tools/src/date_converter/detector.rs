@@ -1,6 +1,4 @@
-use devtoys_api::{
-    DataTypeSpec, DetectedPayload, Detector, RawData, TYPE_DATE, TYPE_TEXT,
-};
+use devtoys_api::{DataTypeSpec, DetectedPayload, Detector, RawData, TYPE_DATE, TYPE_TEXT};
 
 use super::looks_like_date;
 

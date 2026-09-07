@@ -1,172 +1,85 @@
-use gpui::{
-    div, prelude::*, ClipboardItem, Context, Entity, SharedString, Subscription, Window,
-};
-use gpui_component::button::{Button, ButtonVariants as _};
-use gpui_component::input::{Input, InputEvent, InputState};
-use gpui_component::{h_flex, v_flex, ActiveTheme};
+use crate::slot::ToolView;
+use crate::ui;
 
-use crate::slot::ReceivesData;
-use super::helper::{format_reports, looks_like_xsd, validate_xml_xsd};
+use super::helper::{format_reports, looks_like_xsd, validate_xml_xsd, XmlReportLevel};
 
 pub struct XmlXsdView {
-    xsd: Entity<InputState>,
-    xml: Entity<InputState>,
-    output: Entity<InputState>,
-    error: Option<SharedString>,
-    _subscriptions: Vec<Subscription>,
+    xsd: String,
+    xml: String,
+    output: String,
+    error: Option<String>,
 }
 
 impl XmlXsdView {
-    pub fn new(window: &mut Window, cx: &mut Context<Self>) -> Self {
-        let xsd = cx.new(|cx| {
-            InputState::new(window, cx)
-                .multi_line(true)
-                .rows(12)
-                .placeholder("粘贴 XSD")
-        });
-        let xml = cx.new(|cx| {
-            InputState::new(window, cx)
-                .multi_line(true)
-                .rows(12)
-                .placeholder("粘贴 XML")
-        });
-        let output = cx.new(|cx| {
-            InputState::new(window, cx)
-                .multi_line(true)
-                .rows(6)
-                .placeholder("校验结果")
-        });
-
-        let subscriptions = vec![
-            cx.subscribe_in(&xsd, window, |this, _, event: &InputEvent, window, cx| {
-                if matches!(event, InputEvent::Change) {
-                    this.revalidate(window, cx);
-                }
-            }),
-            cx.subscribe_in(&xml, window, |this, _, event: &InputEvent, window, cx| {
-                if matches!(event, InputEvent::Change) {
-                    this.revalidate(window, cx);
-                }
-            }),
-        ];
-
+    pub fn new() -> Self {
         Self {
-            xsd,
-            xml,
-            output,
+            xsd: String::new(),
+            xml: String::new(),
+            output: String::new(),
             error: None,
-            _subscriptions: subscriptions,
         }
     }
 
-    fn revalidate(&mut self, window: &mut Window, cx: &mut Context<Self>) {
-        let xml = self.xml.read(cx).value().to_string();
-        let xsd = self.xsd.read(cx).value().to_string();
-        if xml.trim().is_empty() {
+    fn revalidate(&mut self) {
+        if self.xml.trim().is_empty() {
             self.error = None;
-            self.output.update(cx, |output, cx| {
-                output.set_value(String::new(), window, cx);
-            });
-            cx.notify();
+            self.output.clear();
             return;
         }
-
-        let reports = validate_xml_xsd(&xml, &xsd);
-        let text = format_reports(&reports);
-        let has_error = reports
-            .iter()
-            .any(|r| r.level == super::helper::XmlReportLevel::Error);
-        self.error = if has_error {
-            Some(SharedString::from("校验失败"))
+        let reports = validate_xml_xsd(&self.xml, &self.xsd);
+        self.output = format_reports(&reports);
+        self.error = if reports.iter().any(|r| r.level == XmlReportLevel::Error) {
+            Some("校验失败".into())
         } else {
             None
         };
-        self.output.update(cx, |output, cx| {
-            output.set_value(text, window, cx);
+    }
+}
+
+impl ToolView for XmlXsdView {
+    fn ui(&mut self, ui: &mut egui::Ui) {
+        ui.horizontal_wrapped(|ui| {
+            if ui::primary_button(ui, "复制").clicked() {
+                ui::copy_text(ui, &self.output);
+            }
         });
-        cx.notify();
-    }
-
-    fn copy_output(&mut self, cx: &mut Context<Self>) {
-        let text = self.output.read(cx).value().to_string();
-        if text.is_empty() {
-            return;
+        ui::error_label(ui, self.error.as_deref());
+        let avail = ui.available_size();
+        let bottom = (avail.y * 0.28).clamp(80.0, 180.0);
+        let mut xsd_changed = false;
+        let mut xml_changed = false;
+        ui.allocate_ui(egui::vec2(avail.x, (avail.y - bottom).max(80.0)), |ui| {
+            ui::split_2(
+                ui,
+                |ui| {
+                    xsd_changed =
+                        ui::labeled_code(ui, "XSD", "xml-xsd-xsd", &mut self.xsd, "粘贴 XSD", true);
+                },
+                |ui| {
+                    xml_changed =
+                        ui::labeled_code(ui, "XML", "xml-xsd-xml", &mut self.xml, "粘贴 XML", true);
+                },
+            );
+        });
+        if xsd_changed || xml_changed {
+            self.revalidate();
         }
-        cx.write_to_clipboard(ClipboardItem::new_string(text));
+        ui::labeled_code(
+            ui,
+            "校验结果",
+            "xml-xsd-out",
+            &mut self.output,
+            "校验结果",
+            false,
+        );
     }
-}
 
-impl ReceivesData for XmlXsdView {
-    fn on_data_received(
-        &mut self,
-        payload: &str,
-        window: &mut Window,
-        cx: &mut Context<Self>,
-    ) {
+    fn on_data_received(&mut self, payload: &str) {
         if looks_like_xsd(payload) {
-            self.xsd.update(cx, |input, cx| {
-                input.set_value(payload.to_string(), window, cx);
-            });
+            self.xsd = payload.to_string();
         } else {
-            self.xml.update(cx, |input, cx| {
-                input.set_value(payload.to_string(), window, cx);
-            });
+            self.xml = payload.to_string();
         }
-        self.revalidate(window, cx);
-    }
-}
-
-impl Render for XmlXsdView {
-    fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        v_flex()
-            .size_full()
-            .p_4()
-            .gap_3()
-            .child(
-                h_flex()
-                    .gap_2()
-                    .items_center()
-                    .child(
-                        Button::new("copy-output")
-                            .primary()
-                            .label("复制")
-                            .on_click(cx.listener(|this, _, _, cx| {
-                                this.copy_output(cx);
-                            })),
-                    ),
-            )
-            .when_some(self.error.clone(), |this, message| {
-                this.child(div().text_color(cx.theme().danger).child(message))
-            })
-            .child(
-                gpui::div()
-                    .flex()
-                    .flex_row()
-                    .flex_1()
-                    .gap_3()
-                    .min_h_0()
-                    .child(
-                        v_flex()
-                            .flex_1()
-                            .gap_1()
-                            .min_h_0()
-                            .child("XSD")
-                            .child(Input::new(&self.xsd).h_full()),
-                    )
-                    .child(
-                        v_flex()
-                            .flex_1()
-                            .gap_1()
-                            .min_h_0()
-                            .child("XML")
-                            .child(Input::new(&self.xml).h_full()),
-                    ),
-            )
-            .child(
-                v_flex()
-                    .gap_1()
-                    .child("校验结果")
-                    .child(Input::new(&self.output).disabled(true)),
-            )
+        self.revalidate();
     }
 }

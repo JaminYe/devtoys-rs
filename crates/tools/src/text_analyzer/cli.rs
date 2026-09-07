@@ -3,7 +3,7 @@ use clap::{Arg, ArgAction, ArgMatches, Command};
 
 use crate::cli::{read_input, write_output, CliError, CliTool};
 
-use super::{apply, Operation, OPERATION_NAMES, ID};
+use super::{apply, Operation, ID, OPERATION_NAMES};
 
 pub fn cli_tool() -> CliTool {
     CliTool {

@@ -36,14 +36,13 @@ jobs:
       - name: Rust cache
         uses: Swatinem/rust-cache@v2
 
-      # GPUI 在 Linux 上依赖额外系统库
-      - name: Install Linux dependencies (GPUI)
+      - name: Install Linux dependencies (egui)
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
           sudo apt-get install -y \
             libxkbcommon-dev libxkbcommon-x11-dev libwayland-dev \
-            libfontconfig1-dev libfreetype6-dev libasound2-dev \
+            libxcb-render0-dev libxcb-shape0-dev libxcb-xfixes0-dev \
             libgl1-mesa-dev libegl1-mesa-dev pkg-config
 
       - name: Build release binaries

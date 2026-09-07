@@ -21,9 +21,7 @@ fn round_trips_all_settings_fields() {
         theme: ThemePreference::Dark,
         smart_detection_enabled: false,
         smart_detection_paste: false,
-        show_recent: false,
         favorites: vec!["JsonFormatter".into(), "TextTool".into()],
-        recent: vec!["TextTool".into(), "JsonFormatter".into()],
         window: Some(WindowState {
             x: 12.0,
             y: 34.0,

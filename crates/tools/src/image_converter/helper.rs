@@ -80,15 +80,15 @@ impl ImageTargetFormat {
     }
 }
 
-pub fn convert_image(bytes: &[u8], format: ImageTargetFormat) -> Result<Vec<u8>, ImageConvertError> {
+pub fn convert_image(
+    bytes: &[u8],
+    format: ImageTargetFormat,
+) -> Result<Vec<u8>, ImageConvertError> {
     let img = image::load_from_memory(bytes).map_err(|_| ImageConvertError::InvalidImage)?;
     encode(img, format)
 }
 
-pub fn convert_image_named(
-    bytes: &[u8],
-    format: &str,
-) -> Result<Vec<u8>, ImageConvertError> {
+pub fn convert_image_named(bytes: &[u8], format: &str) -> Result<Vec<u8>, ImageConvertError> {
     let format = ImageTargetFormat::parse(format).ok_or(ImageConvertError::UnknownFormat)?;
     convert_image(bytes, format)
 }

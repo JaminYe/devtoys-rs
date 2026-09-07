@@ -1,184 +1,87 @@
-use gpui::{
-    div, prelude::*, ClipboardItem, Context, Entity, SharedString, Subscription, Window,
-};
-use gpui_component::button::{Button, ButtonVariants as _};
-use gpui_component::input::{Input, InputEvent, InputState};
-use gpui_component::switch::Switch;
-use gpui_component::{h_flex, v_flex, ActiveTheme, Selectable};
+use crate::slot::ToolView;
+use crate::ui;
 
-use crate::slot::ReceivesData;
 use super::{generate_uuid, UuidOptions, UuidVersion};
 
 pub struct UuidGenView {
-    count_input: Entity<InputState>,
-    output: Entity<InputState>,
+    count: String,
+    output: String,
     version: UuidVersion,
     hyphens: bool,
     uppercase: bool,
-    error: Option<SharedString>,
-    _subscriptions: Vec<Subscription>,
+    error: Option<String>,
 }
 
 impl UuidGenView {
-    pub fn new(window: &mut Window, cx: &mut Context<Self>) -> Self {
-        let count_input = cx.new(|cx| InputState::new(window, cx).placeholder("数量"));
-        count_input.update(cx, |input, cx| {
-            input.set_value("1".to_string(), window, cx);
-        });
-        let output = cx.new(|cx| {
-            InputState::new(window, cx)
-                .multi_line(true)
-                .rows(8)
-                .placeholder("生成结果")
-        });
-        let subscriptions = vec![cx.subscribe_in(
-            &count_input,
-            window,
-            |this, _, event: &InputEvent, window, cx| {
-                if matches!(event, InputEvent::Change) {
-                    this.regenerate(window, cx);
-                }
-            },
-        )];
+    pub fn new() -> Self {
         let mut this = Self {
-            count_input,
-            output,
+            count: "1".into(),
+            output: String::new(),
             version: UuidVersion::Four,
             hyphens: true,
             uppercase: false,
             error: None,
-            _subscriptions: subscriptions,
         };
-        this.regenerate(window, cx);
+        this.regenerate();
         this
     }
 
-    fn options(&self, cx: &Context<Self>) -> UuidOptions {
+    fn options(&self) -> UuidOptions {
         UuidOptions {
             version: self.version,
             hyphens: self.hyphens,
             uppercase: self.uppercase,
-            count: self
-                .count_input
-                .read(cx)
-                .value()
-                .parse::<usize>()
-                .unwrap_or(1)
-                .max(1),
+            count: self.count.parse::<usize>().unwrap_or(1).max(1),
         }
     }
 
-    fn regenerate(&mut self, window: &mut Window, cx: &mut Context<Self>) {
-        match generate_uuid(&self.options(cx)) {
+    fn regenerate(&mut self) {
+        match generate_uuid(&self.options()) {
             Ok(text) => {
                 self.error = None;
-                self.output.update(cx, |output, cx| {
-                    output.set_value(text, window, cx);
-                });
+                self.output = text;
             }
             Err(err) => {
-                self.error = Some(SharedString::from(err.to_string()));
-                self.output.update(cx, |output, cx| {
-                    output.set_value(String::new(), window, cx);
-                });
+                self.error = Some(err.to_string());
+                self.output.clear();
             }
         }
-        cx.notify();
-    }
-
-    fn version_button(
-        &self,
-        id: &'static str,
-        label: &'static str,
-        value: UuidVersion,
-        cx: &mut Context<Self>,
-    ) -> impl IntoElement {
-        Button::new(id)
-            .label(label)
-            .compact()
-            .selected(self.version == value)
-            .on_click(cx.listener(move |this, _, window, cx| {
-                this.version = value;
-                this.regenerate(window, cx);
-            }))
-    }
-
-    fn copy_output(&mut self, cx: &mut Context<Self>) {
-        if self.error.is_some() {
-            return;
-        }
-        let text = self.output.read(cx).value().to_string();
-        if text.is_empty() {
-            return;
-        }
-        cx.write_to_clipboard(ClipboardItem::new_string(text));
     }
 }
 
-impl ReceivesData for UuidGenView {
-    fn on_data_received(&mut self, _: &str, _: &mut Window, _: &mut Context<Self>) {}
-}
-
-impl Render for UuidGenView {
-    fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        v_flex()
-            .size_full()
-            .p_4()
-            .gap_3()
-            .child(
-                h_flex()
-                    .gap_2()
-                    .items_center()
-                    .flex_wrap()
-                    .child(self.version_button("uuid-v1", "v1", UuidVersion::One, cx))
-                    .child(self.version_button("uuid-v4", "v4", UuidVersion::Four, cx))
-                    .child(self.version_button("uuid-v7", "v7", UuidVersion::Seven, cx))
-                    .child(
-                        Switch::new("uuid-hyphens")
-                            .label("连字符")
-                            .checked(self.hyphens)
-                            .on_click(cx.listener(|this, checked, window, cx| {
-                                this.hyphens = *checked;
-                                this.regenerate(window, cx);
-                            })),
-                    )
-                    .child(
-                        Switch::new("uuid-uppercase")
-                            .label("大写")
-                            .checked(self.uppercase)
-                            .on_click(cx.listener(|this, checked, window, cx| {
-                                this.uppercase = *checked;
-                                this.regenerate(window, cx);
-                            })),
-                    )
-                    .child(div().child("数量"))
-                    .child(Input::new(&self.count_input).w_20())
-                    .child(
-                        Button::new("uuid-generate")
-                            .label("生成")
-                            .on_click(cx.listener(|this, _, window, cx| {
-                                this.regenerate(window, cx);
-                            })),
-                    )
-                    .child(
-                        Button::new("copy-output")
-                            .primary()
-                            .label("复制")
-                            .on_click(cx.listener(|this, _, _, cx| {
-                                this.copy_output(cx);
-                            })),
-                    ),
-            )
-            .when_some(self.error.clone(), |this, message| {
-                this.child(div().text_color(cx.theme().danger).child(message))
-            })
-            .child(
-                v_flex()
-                    .flex_1()
-                    .gap_1()
-                    .min_h_0()
-                    .child("输出")
-                    .child(Input::new(&self.output).h_full().disabled(true)),
-            )
+impl ToolView for UuidGenView {
+    fn ui(&mut self, ui: &mut egui::Ui) {
+        let mut dirty = false;
+        ui.horizontal_wrapped(|ui| {
+            for (label, value) in [
+                ("v1", UuidVersion::One),
+                ("v4", UuidVersion::Four),
+                ("v7", UuidVersion::Seven),
+            ] {
+                if ui::toggle(ui, self.version == value, label).clicked() {
+                    self.version = value;
+                    dirty = true;
+                }
+            }
+            dirty |= ui.checkbox(&mut self.hyphens, "连字符").changed();
+            dirty |= ui.checkbox(&mut self.uppercase, "大写").changed();
+            ui.label("数量");
+            ui.allocate_ui(egui::vec2(72.0, ui.spacing().interact_size.y), |ui| {
+                dirty |= ui::singleline(ui, "uuid-count", &mut self.count, "数量");
+            });
+            if ui.button("生成").clicked() {
+                dirty = true;
+            }
+            if ui::primary_button(ui, "复制").clicked() && self.error.is_none() {
+                ui::copy_text(ui, &self.output);
+            }
+        });
+        if dirty {
+            self.regenerate();
+        }
+        ui::error_label(ui, self.error.as_deref());
+        ui::labeled_code(ui, "输出", "uuid-out", &mut self.output, "生成结果", false);
     }
+
+    fn on_data_received(&mut self, _: &str) {}
 }

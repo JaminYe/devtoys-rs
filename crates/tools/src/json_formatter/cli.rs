@@ -49,7 +49,10 @@ fn run(matches: &ArgMatches) -> Result<(), CliError> {
     let indent = parse_indent(matches.get_one::<String>("indentation").map(String::as_str))?;
     let sort = matches.get_flag("sortProperties");
     let formatted = format_json(&source, indent, sort).map_err(|_| CliError::new("非法 JSON"))?;
-    write_output(matches.get_one::<String>("output").map(String::as_str), &formatted)
+    write_output(
+        matches.get_one::<String>("output").map(String::as_str),
+        &formatted,
+    )
 }
 
 fn parse_indent(value: Option<&str>) -> Result<Indentation, CliError> {

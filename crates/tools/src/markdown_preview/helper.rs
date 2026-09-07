@@ -1,6 +1,4 @@
-use devtoys_api::{
-    DataTypeSpec, DetectedPayload, Detector, RawData, TYPE_TEXT,
-};
+use devtoys_api::{DataTypeSpec, DetectedPayload, Detector, RawData, TYPE_TEXT};
 use pulldown_cmark::{html, Options, Parser};
 
 pub const TYPE_MARKDOWN: &str = "Markdown";

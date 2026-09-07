@@ -74,8 +74,7 @@ pub fn looks_like_yaml(text: &str) -> bool {
 }
 
 fn json_to_yaml(input: &str, indent: Indentation) -> Result<String, JsonYamlError> {
-    let value: JsonValue =
-        serde_json::from_str(input).map_err(|_| JsonYamlError::InvalidJson)?;
+    let value: JsonValue = serde_json::from_str(input).map_err(|_| JsonYamlError::InvalidJson)?;
     if indent == Indentation::Minified {
         return serde_json::to_string(&value).map_err(|_| JsonYamlError::InvalidJson);
     }
@@ -84,8 +83,7 @@ fn json_to_yaml(input: &str, indent: Indentation) -> Result<String, JsonYamlErro
 }
 
 fn yaml_to_json(input: &str, indent: Indentation) -> Result<String, JsonYamlError> {
-    let value: YamlValue =
-        serde_yaml::from_str(input).map_err(|_| JsonYamlError::InvalidYaml)?;
+    let value: YamlValue = serde_yaml::from_str(input).map_err(|_| JsonYamlError::InvalidYaml)?;
     serialize_json(&value, indent)
 }
 
@@ -136,16 +134,14 @@ mod tests {
 
     #[test]
     fn json_object_to_yaml_contains_key_value() {
-        let got =
-            convert_json_yaml(r#"{"a":1}"#, Conversion::JsonToYaml, Indentation::TwoSpaces)
-                .unwrap();
+        let got = convert_json_yaml(r#"{"a":1}"#, Conversion::JsonToYaml, Indentation::TwoSpaces)
+            .unwrap();
         assert!(got.contains("a: 1"), "{got}");
     }
 
     #[test]
     fn yaml_to_json_minified() {
-        let got =
-            convert_json_yaml("a: 1", Conversion::YamlToJson, Indentation::Minified).unwrap();
+        let got = convert_json_yaml("a: 1", Conversion::YamlToJson, Indentation::Minified).unwrap();
         assert_eq!(got, r#"{"a":1}"#);
     }
 

@@ -534,7 +534,10 @@ mod tests {
 
     #[test]
     fn snake_of_hello_world() {
-        assert_eq!(apply("Hello World", &[Operation::Snake], &mut rng()), "hello_world");
+        assert_eq!(
+            apply("Hello World", &[Operation::Snake], &mut rng()),
+            "hello_world"
+        );
     }
 
     #[test]

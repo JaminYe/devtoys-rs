@@ -15,8 +15,7 @@ pub fn format_json(
     indent: Indentation,
     sort_properties: bool,
 ) -> Result<String, JsonFormatError> {
-    let mut value: Value =
-        serde_json::from_str(input).map_err(|_| JsonFormatError::InvalidJson)?;
+    let mut value: Value = serde_json::from_str(input).map_err(|_| JsonFormatError::InvalidJson)?;
     if sort_properties {
         sort_value(&mut value);
     }
@@ -93,12 +92,7 @@ mod tests {
 
     #[test]
     fn sort_properties_minified_nested() {
-        let got = format_json(
-            r#"{"z":{"b":1,"a":2},"a":0}"#,
-            Indentation::Minified,
-            true,
-        )
-        .unwrap();
+        let got = format_json(r#"{"z":{"b":1,"a":2},"a":0}"#, Indentation::Minified, true).unwrap();
         assert_eq!(got, r#"{"a":0,"z":{"a":2,"b":1}}"#);
     }
 

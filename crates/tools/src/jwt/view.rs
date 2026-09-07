@@ -1,16 +1,7 @@
-use gpui::{
-    div, prelude::*, ClipboardItem, Context, Entity, SharedString, Subscription, Window,
-};
-use gpui_component::button::{Button, ButtonVariants as _};
-use gpui_component::input::{Input, InputEvent, InputState};
-use gpui_component::switch::Switch;
-use gpui_component::{h_flex, v_flex, ActiveTheme, Selectable};
+use crate::slot::ToolView;
+use crate::ui;
 
-use crate::slot::ReceivesData;
-
-use super::{
-    decode_jwt, encode_jwt, JwtAlgorithm, JwtDecodeOptions, JwtEncodeOptions,
-};
+use super::{decode_jwt, encode_jwt, JwtAlgorithm, JwtDecodeOptions, JwtEncodeOptions};
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 enum JwtMode {
@@ -21,225 +12,112 @@ enum JwtMode {
 
 pub struct JwtView {
     mode: JwtMode,
-    token: Entity<InputState>,
-    payload: Entity<InputState>,
-    secret: Entity<InputState>,
-    issuer: Entity<InputState>,
-    audience: Entity<InputState>,
-    actor: Entity<InputState>,
-    expiration: Entity<InputState>,
-    header_out: Entity<InputState>,
-    payload_out: Entity<InputState>,
-    signature_out: Entity<InputState>,
-    token_out: Entity<InputState>,
+    token: String,
+    payload: String,
+    secret: String,
+    issuer: String,
+    audience: String,
+    actor: String,
+    expiration: String,
+    header_out: String,
+    payload_out: String,
+    signature_out: String,
+    token_out: String,
     algorithm: JwtAlgorithm,
     secret_is_base64: bool,
     validate_lifetime: bool,
     add_default_time_claims: bool,
-    error: Option<SharedString>,
-    _subscriptions: Vec<Subscription>,
+    error: Option<String>,
 }
 
 impl JwtView {
-    pub fn new(window: &mut Window, cx: &mut Context<Self>) -> Self {
-        let token = multiline(window, cx, "粘贴 Token", 6);
-        let payload = multiline(window, cx, "Payload JSON", 8);
-        let secret = single(window, cx, "密钥");
-        let issuer = single(window, cx, "签发者 iss");
-        let audience = single(window, cx, "受众 aud");
-        let actor = single(window, cx, "Actor");
-        let expiration = single(window, cx, "过期秒数");
-        let header_out = multiline(window, cx, "头部", 6);
-        let payload_out = multiline(window, cx, "载荷", 8);
-        let signature_out = single(window, cx, "签名");
-        let token_out = multiline(window, cx, "Token", 4);
-
-        let mut subscriptions = Vec::new();
-        for field in [
-            &token, &payload, &secret, &issuer, &audience, &actor, &expiration,
-        ] {
-            subscriptions.push(cx.subscribe_in(
-                field,
-                window,
-                |this, _, event: &InputEvent, window, cx| {
-                    if matches!(event, InputEvent::Change) {
-                        this.recompute(window, cx);
-                    }
-                },
-            ));
-        }
-
+    pub fn new() -> Self {
         Self {
             mode: JwtMode::Decode,
-            token,
-            payload,
-            secret,
-            issuer,
-            audience,
-            actor,
-            expiration,
-            header_out,
-            payload_out,
-            signature_out,
-            token_out,
+            token: String::new(),
+            payload: String::new(),
+            secret: String::new(),
+            issuer: String::new(),
+            audience: String::new(),
+            actor: String::new(),
+            expiration: String::new(),
+            header_out: String::new(),
+            payload_out: String::new(),
+            signature_out: String::new(),
+            token_out: String::new(),
             algorithm: JwtAlgorithm::Hs256,
             secret_is_base64: false,
             validate_lifetime: false,
             add_default_time_claims: false,
             error: None,
-            _subscriptions: subscriptions,
         }
     }
 
-    fn recompute(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+    fn recompute(&mut self) {
         match self.mode {
-            JwtMode::Decode => self.decode_now(window, cx),
-            JwtMode::Encode => self.encode_now(window, cx),
+            JwtMode::Decode => self.decode_now(),
+            JwtMode::Encode => self.encode_now(),
         }
-        cx.notify();
     }
 
-    fn decode_now(&mut self, window: &mut Window, cx: &mut Context<Self>) {
-        let token = self.token.read(cx).value().to_string();
-        if token.trim().is_empty() {
+    fn decode_now(&mut self) {
+        if self.token.trim().is_empty() {
             self.error = None;
-            self.set_text(&self.header_out, "", window, cx);
-            self.set_text(&self.payload_out, "", window, cx);
-            self.set_text(&self.signature_out, "", window, cx);
+            self.header_out.clear();
+            self.payload_out.clear();
+            self.signature_out.clear();
             return;
         }
         let opts = JwtDecodeOptions {
-            secret: optional_text(self.secret.read(cx).value().as_ref()),
+            secret: optional_text(&self.secret),
             secret_is_base64: self.secret_is_base64,
-            issuer: optional_text(self.issuer.read(cx).value().as_ref()),
-            audience: optional_text(self.audience.read(cx).value().as_ref()),
+            issuer: optional_text(&self.issuer),
+            audience: optional_text(&self.audience),
             validate_lifetime: self.validate_lifetime,
-            actor: optional_text(self.actor.read(cx).value().as_ref()),
+            actor: optional_text(&self.actor),
         };
-        match decode_jwt(&token, &opts) {
+        match decode_jwt(&self.token, &opts) {
             Ok(decoded) => {
                 self.error = None;
-                self.set_text(&self.header_out, &decoded.header, window, cx);
-                self.set_text(&self.payload_out, &decoded.payload, window, cx);
-                self.set_text(&self.signature_out, &decoded.signature, window, cx);
+                self.header_out = decoded.header;
+                self.payload_out = decoded.payload;
+                self.signature_out = decoded.signature;
             }
             Err(err) => {
-                self.error = Some(SharedString::from(err.to_string()));
-                self.set_text(&self.header_out, "", window, cx);
-                self.set_text(&self.payload_out, "", window, cx);
-                self.set_text(&self.signature_out, "", window, cx);
+                self.error = Some(err.to_string());
+                self.header_out.clear();
+                self.payload_out.clear();
+                self.signature_out.clear();
             }
         }
     }
 
-    fn encode_now(&mut self, window: &mut Window, cx: &mut Context<Self>) {
-        let payload = self.payload.read(cx).value().to_string();
-        if payload.trim().is_empty() {
+    fn encode_now(&mut self) {
+        if self.payload.trim().is_empty() {
             self.error = None;
-            self.set_text(&self.token_out, "", window, cx);
+            self.token_out.clear();
             return;
         }
-        let expiration_secs = parse_expiration(self.expiration.read(cx).value().as_ref());
         let opts = JwtEncodeOptions {
             algorithm: self.algorithm,
-            secret: self.secret.read(cx).value().to_string(),
+            secret: self.secret.clone(),
             secret_is_base64: self.secret_is_base64,
-            issuer: optional_text(self.issuer.read(cx).value().as_ref()),
-            audience: optional_text(self.audience.read(cx).value().as_ref()),
+            issuer: optional_text(&self.issuer),
+            audience: optional_text(&self.audience),
             add_default_time_claims: self.add_default_time_claims,
-            expiration_secs,
+            expiration_secs: parse_expiration(&self.expiration),
         };
-        match encode_jwt(&payload, &opts) {
+        match encode_jwt(&self.payload, &opts) {
             Ok(token) => {
                 self.error = None;
-                self.set_text(&self.token_out, &token, window, cx);
+                self.token_out = token;
             }
             Err(err) => {
-                self.error = Some(SharedString::from(err.to_string()));
-                self.set_text(&self.token_out, "", window, cx);
+                self.error = Some(err.to_string());
+                self.token_out.clear();
             }
         }
     }
-
-    fn set_text(
-        &self,
-        field: &Entity<InputState>,
-        value: &str,
-        window: &mut Window,
-        cx: &mut Context<Self>,
-    ) {
-        field.update(cx, |input, cx| {
-            input.set_value(value.to_string(), window, cx);
-        });
-    }
-
-    fn set_mode(&mut self, mode: JwtMode, window: &mut Window, cx: &mut Context<Self>) {
-        self.mode = mode;
-        self.recompute(window, cx);
-    }
-
-    fn mode_button(
-        &self,
-        id: &'static str,
-        label: &'static str,
-        value: JwtMode,
-        cx: &mut Context<Self>,
-    ) -> impl IntoElement {
-        Button::new(id)
-            .label(label)
-            .compact()
-            .selected(self.mode == value)
-            .on_click(cx.listener(move |this, _, window, cx| {
-                this.set_mode(value, window, cx);
-            }))
-    }
-
-    fn algorithm_button(&self, alg: JwtAlgorithm, cx: &mut Context<Self>) -> impl IntoElement {
-        Button::new(alg.as_str())
-            .label(alg.as_str())
-            .compact()
-            .selected(self.algorithm == alg)
-            .on_click(cx.listener(move |this, _, window, cx| {
-                this.algorithm = alg;
-                this.recompute(window, cx);
-            }))
-    }
-
-    fn copy_token(&mut self, cx: &mut Context<Self>) {
-        if self.error.is_some() {
-            return;
-        }
-        let text = match self.mode {
-            JwtMode::Decode => self.token.read(cx).value().to_string(),
-            JwtMode::Encode => self.token_out.read(cx).value().to_string(),
-        };
-        if text.is_empty() {
-            return;
-        }
-        cx.write_to_clipboard(ClipboardItem::new_string(text));
-    }
-}
-
-fn multiline(
-    window: &mut Window,
-    cx: &mut Context<JwtView>,
-    placeholder: &'static str,
-    rows: usize,
-) -> Entity<InputState> {
-    cx.new(|cx| {
-        InputState::new(window, cx)
-            .multi_line(true)
-            .rows(rows)
-            .placeholder(placeholder)
-    })
-}
-
-fn single(
-    window: &mut Window,
-    cx: &mut Context<JwtView>,
-    placeholder: &'static str,
-) -> Entity<InputState> {
-    cx.new(|cx| InputState::new(window, cx).placeholder(placeholder))
 }
 
 fn optional_text(value: &str) -> Option<String> {
@@ -260,139 +138,150 @@ fn parse_expiration(value: &str) -> Option<u64> {
     }
 }
 
-impl ReceivesData for JwtView {
-    fn on_data_received(
-        &mut self,
-        _payload: &str,
-        _window: &mut Window,
-        _cx: &mut Context<Self>,
-    ) {
-    }
+fn split_3(
+    ui: &mut egui::Ui,
+    a: impl FnOnce(&mut egui::Ui),
+    b: impl FnOnce(&mut egui::Ui),
+    c: impl FnOnce(&mut egui::Ui),
+) {
+    let spacing = 12.0;
+    let total = ui.available_size();
+    let w = ((total.x - spacing * 2.0) / 3.0).max(80.0);
+    ui.horizontal(|ui| {
+        ui.set_min_height(total.y);
+        ui.allocate_ui(egui::vec2(w, total.y), a);
+        ui.add_space(spacing);
+        ui.allocate_ui(egui::vec2(w, total.y), b);
+        ui.add_space(spacing);
+        ui.allocate_ui(egui::vec2(w, total.y), c);
+    });
 }
 
-impl Render for JwtView {
-    fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        v_flex()
-            .size_full()
-            .p_4()
-            .gap_3()
-            .child(
-                h_flex()
-                    .gap_2()
-                    .items_center()
-                    .flex_wrap()
-                    .child(self.mode_button("jwt-decode", "解码", JwtMode::Decode, cx))
-                    .child(self.mode_button("jwt-encode", "编码", JwtMode::Encode, cx))
-                    .child(
-                        Switch::new("jwt-b64")
-                            .label("Base64 密钥")
-                            .checked(self.secret_is_base64)
-                            .on_click(cx.listener(|this, checked, window, cx| {
-                                this.secret_is_base64 = *checked;
-                                this.recompute(window, cx);
-                            })),
-                    )
-                    .child(
-                        Button::new("jwt-copy")
-                            .primary()
-                            .label("复制")
-                            .on_click(cx.listener(|this, _, _, cx| {
-                                this.copy_token(cx);
-                            })),
-                    ),
-            )
-            .when_some(self.error.clone(), |this, message| {
-                this.child(div().text_color(cx.theme().danger).child(message))
-            })
-            .child(Input::new(&self.secret))
-            .child(
-                h_flex()
-                    .gap_2()
-                    .child(Input::new(&self.issuer).flex_1())
-                    .child(Input::new(&self.audience).flex_1()),
-            )
-            .map(|this| match self.mode {
-                JwtMode::Decode => this
-                    .child(
-                        Switch::new("jwt-lifetime")
-                            .label("校验有效期")
-                            .checked(self.validate_lifetime)
-                            .on_click(cx.listener(|this, checked, window, cx| {
-                                this.validate_lifetime = *checked;
-                                this.recompute(window, cx);
-                            })),
-                    )
-                    .child(Input::new(&self.actor))
-                    .child(
-                        v_flex()
-                            .gap_1()
-                            .child("Token")
-                            .child(Input::new(&self.token)),
-                    )
-                    .child(
-                gpui::div()
-                    .flex()
-                    .flex_row()
-                    .flex_1()
-                    .gap_3()
-                    .min_h_0()
-                            .child(
-                                v_flex()
-                                    .flex_1()
-                                    .gap_1()
-                                    .min_h_0()
-                                    .child("头部")
-                                    .child(Input::new(&self.header_out).h_full().disabled(true)),
-                            )
-                            .child(
-                                v_flex()
-                                    .flex_1()
-                                    .gap_1()
-                                    .min_h_0()
-                                    .child("载荷")
-                                    .child(Input::new(&self.payload_out).h_full().disabled(true)),
-                            )
-                            .child(
-                                v_flex()
-                                    .flex_1()
-                                    .gap_1()
-                                    .min_h_0()
-                                    .child("签名")
-                                    .child(Input::new(&self.signature_out).h_full().disabled(true)),
-                            ),
-                    ),
-                JwtMode::Encode => this
-                    .child(
-                        h_flex()
-                            .gap_2()
-                            .items_center()
-                            .flex_wrap()
-                            .children(JwtAlgorithm::ALL.map(|alg| self.algorithm_button(alg, cx))),
-                    )
-                    .child(
-                        Switch::new("jwt-time")
-                            .label("默认时间声明")
-                            .checked(self.add_default_time_claims)
-                            .on_click(cx.listener(|this, checked, window, cx| {
-                                this.add_default_time_claims = *checked;
-                                this.recompute(window, cx);
-                            })),
-                    )
-                    .child(Input::new(&self.expiration))
-                    .child(
-                        v_flex()
-                            .flex_1()
-                            .gap_1()
-                            .min_h_0()
-                            .child("载荷")
-                            .child(Input::new(&self.payload).h_full()),
-                    )
-                    .child(
-                        v_flex()
-                            .gap_1()
-                            .child("Token")
-                            .child(Input::new(&self.token_out).disabled(true)),
-                    ),
-            })
+impl ToolView for JwtView {
+    fn ui(&mut self, ui: &mut egui::Ui) {
+        let mut dirty = false;
+        ui.horizontal_wrapped(|ui| {
+            if ui::toggle(ui, self.mode == JwtMode::Decode, "解码").clicked() {
+                self.mode = JwtMode::Decode;
+                dirty = true;
+            }
+            if ui::toggle(ui, self.mode == JwtMode::Encode, "编码").clicked() {
+                self.mode = JwtMode::Encode;
+                dirty = true;
+            }
+            dirty |= ui
+                .checkbox(&mut self.secret_is_base64, "Base64 密钥")
+                .changed();
+            if ui::primary_button(ui, "复制").clicked() && self.error.is_none() {
+                let text = match self.mode {
+                    JwtMode::Decode => &self.token,
+                    JwtMode::Encode => &self.token_out,
+                };
+                ui::copy_text(ui, text);
+            }
+        });
+        ui::error_label(ui, self.error.as_deref());
+        dirty |= ui::singleline(ui, "jwt-secret", &mut self.secret, "密钥");
+        ui.columns(2, |cols| {
+            dirty |= ui::singleline(&mut cols[0], "jwt-iss", &mut self.issuer, "签发者 iss");
+            dirty |= ui::singleline(&mut cols[1], "jwt-aud", &mut self.audience, "受众 aud");
+        });
+        match self.mode {
+            JwtMode::Decode => {
+                dirty |= ui
+                    .checkbox(&mut self.validate_lifetime, "校验有效期")
+                    .changed();
+                dirty |= ui::singleline(ui, "jwt-actor", &mut self.actor, "Actor");
+                let avail = ui.available_size();
+                let token_h = 120.0;
+                ui.allocate_ui(egui::vec2(avail.x, token_h), |ui| {
+                    dirty |= ui::labeled_code(
+                        ui,
+                        "Token",
+                        "jwt-token",
+                        &mut self.token,
+                        "粘贴 Token",
+                        true,
+                    );
+                });
+                if dirty {
+                    self.recompute();
+                }
+                split_3(
+                    ui,
+                    |ui| {
+                        ui::labeled_code(
+                            ui,
+                            "头部",
+                            "jwt-header",
+                            &mut self.header_out,
+                            "头部",
+                            false,
+                        );
+                    },
+                    |ui| {
+                        ui::labeled_code(
+                            ui,
+                            "载荷",
+                            "jwt-payload-out",
+                            &mut self.payload_out,
+                            "载荷",
+                            false,
+                        );
+                    },
+                    |ui| {
+                        ui::labeled_code(
+                            ui,
+                            "签名",
+                            "jwt-sig",
+                            &mut self.signature_out,
+                            "签名",
+                            false,
+                        );
+                    },
+                );
+            }
+            JwtMode::Encode => {
+                ui.horizontal_wrapped(|ui| {
+                    for alg in JwtAlgorithm::ALL {
+                        if ui::toggle(ui, self.algorithm == alg, alg.as_str()).clicked() {
+                            self.algorithm = alg;
+                            dirty = true;
+                        }
+                    }
+                });
+                dirty |= ui
+                    .checkbox(&mut self.add_default_time_claims, "默认时间声明")
+                    .changed();
+                dirty |= ui::singleline(ui, "jwt-exp", &mut self.expiration, "过期秒数");
+                let avail = ui.available_size();
+                let token_h = 100.0;
+                ui.allocate_ui(egui::vec2(avail.x, (avail.y - token_h).max(80.0)), |ui| {
+                    dirty |= ui::labeled_code(
+                        ui,
+                        "载荷",
+                        "jwt-payload",
+                        &mut self.payload,
+                        "Payload JSON",
+                        true,
+                    );
+                });
+                if dirty {
+                    self.recompute();
+                }
+                ui.allocate_ui(egui::vec2(avail.x, token_h), |ui| {
+                    ui::labeled_code(
+                        ui,
+                        "Token",
+                        "jwt-token-out",
+                        &mut self.token_out,
+                        "Token",
+                        false,
+                    );
+                });
+            }
+        }
     }
+
+    fn on_data_received(&mut self, _: &str) {}
 }

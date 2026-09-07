@@ -60,6 +60,10 @@ fn run(matches: &ArgMatches) -> Result<(), CliError> {
             .unwrap_or("Utf8"),
     )
     .ok_or_else(|| CliError::new("未知字符集"))?;
-    let result = convert(&source, conversion, charset, false).map_err(|err| CliError::new(err.to_string()))?;
-    write_output(matches.get_one::<String>("output").map(String::as_str), &result)
+    let result = convert(&source, conversion, charset, false)
+        .map_err(|err| CliError::new(err.to_string()))?;
+    write_output(
+        matches.get_one::<String>("output").map(String::as_str),
+        &result,
+    )
 }

@@ -51,7 +51,10 @@ fn run(matches: &ArgMatches) -> Result<(), CliError> {
     let indent = parse_indent(matches.get_one::<String>("indentation").map(String::as_str))?;
     let converted = convert_json_yaml(&source, direction, indent)
         .map_err(|err| CliError::new(err.to_string()))?;
-    write_output(matches.get_one::<String>("output").map(String::as_str), &converted)
+    write_output(
+        matches.get_one::<String>("output").map(String::as_str),
+        &converted,
+    )
 }
 
 fn parse_conversion(value: Option<&str>) -> Result<Conversion, CliError> {

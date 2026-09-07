@@ -4,7 +4,7 @@ version.workspace = true
 edition.workspace = true
 license.workspace = true
 publish.workspace = true
-description = "CLI that calls tool helpers; does not start GPUI"
+description = "CLI that calls tool helpers; does not start the GUI"
 
 [[bin]]
 name = "devtoys-cli"

@@ -1,6 +1,4 @@
-use devtoys_api::{
-    DataTypeSpec, DetectedPayload, Detector, RawData, TYPE_XML, TYPE_XSD,
-};
+use devtoys_api::{DataTypeSpec, DetectedPayload, Detector, RawData, TYPE_XML, TYPE_XSD};
 
 use super::helper::looks_like_xsd;
 

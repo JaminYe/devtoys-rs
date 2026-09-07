@@ -1,6 +1,4 @@
-use devtoys_api::{
-    DataTypeSpec, DetectedPayload, Detector, RawData, TYPE_TEXT,
-};
+use devtoys_api::{DataTypeSpec, DetectedPayload, Detector, RawData, TYPE_TEXT};
 
 pub const TYPE_ESCAPED: &str = "TextWithEscapedCharacters";
 
@@ -67,8 +65,8 @@ pub fn decode(text: &str) -> Result<String, EscapeError> {
                         _ => return Err(EscapeError::InvalidSequence),
                     }
                 }
-                let code = u32::from_str_radix(&hex, 16)
-                    .map_err(|_| EscapeError::InvalidSequence)?;
+                let code =
+                    u32::from_str_radix(&hex, 16).map_err(|_| EscapeError::InvalidSequence)?;
                 let ch = char::from_u32(code).ok_or(EscapeError::InvalidSequence)?;
                 out.push(ch);
             }

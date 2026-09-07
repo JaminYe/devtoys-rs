@@ -1,293 +1,189 @@
-use gpui::{
-    div, prelude::*, ClipboardItem, Context, Entity, SharedString, Subscription, Window,
-};
-use gpui_component::button::{Button, ButtonVariants as _};
-use gpui_component::input::{Input, InputEvent, InputState};
-use gpui_component::switch::Switch;
-use gpui_component::{h_flex, v_flex, ActiveTheme, Selectable};
+use crate::slot::ToolView;
+use crate::ui;
 
-use crate::slot::ReceivesData;
 use super::{datetime_to_timestamp, timestamp_to_datetime, TimestampFormat};
 
 pub struct DateConverterView {
-    timestamp: Entity<InputState>,
-    datetime: Entity<InputState>,
-    timezone: Entity<InputState>,
-    epoch: Entity<InputState>,
+    timestamp: String,
+    datetime: String,
+    timezone: String,
+    epoch: String,
     format: TimestampFormat,
     custom_epoch: bool,
     syncing: bool,
-    error: Option<SharedString>,
-    _subscriptions: Vec<Subscription>,
+    error: Option<String>,
 }
 
 impl DateConverterView {
-    pub fn new(window: &mut Window, cx: &mut Context<Self>) -> Self {
-        let initial_timestamp = "0";
-        let initial_datetime = timestamp_to_datetime(
-            initial_timestamp,
-            TimestampFormat::Seconds,
-            None,
-            None,
-        )
-        .unwrap_or_default();
-        let timestamp = cx.new(|cx| {
-            InputState::new(window, cx)
-                .placeholder("时间戳")
-                .default_value(initial_timestamp)
-        });
-        let datetime = cx.new(|cx| {
-            InputState::new(window, cx)
-                .placeholder("日期时间")
-                .default_value(initial_datetime)
-        });
-        let timezone = cx.new(|cx| InputState::new(window, cx).placeholder("时区，默认本机"));
-        let epoch = cx.new(|cx| InputState::new(window, cx).placeholder("自定义纪元"));
-
-        let subscriptions = vec![
-            cx.subscribe_in(&timestamp, window, |this, _, event: &InputEvent, window, cx| {
-                if matches!(event, InputEvent::Change) {
-                    this.sync_from_timestamp(window, cx);
-                }
-            }),
-            cx.subscribe_in(&datetime, window, |this, _, event: &InputEvent, window, cx| {
-                if matches!(event, InputEvent::Change) {
-                    this.sync_from_datetime(window, cx);
-                }
-            }),
-            cx.subscribe_in(&timezone, window, |this, _, event: &InputEvent, window, cx| {
-                if matches!(event, InputEvent::Change) {
-                    this.sync_from_timestamp(window, cx);
-                }
-            }),
-            cx.subscribe_in(&epoch, window, |this, _, event: &InputEvent, window, cx| {
-                if matches!(event, InputEvent::Change) {
-                    this.sync_from_timestamp(window, cx);
-                }
-            }),
-        ];
-
+    pub fn new() -> Self {
+        let initial_timestamp = "0".to_string();
+        let initial_datetime =
+            timestamp_to_datetime(&initial_timestamp, TimestampFormat::Seconds, None, None)
+                .unwrap_or_default();
         Self {
-            timestamp,
-            datetime,
-            timezone,
-            epoch,
+            timestamp: initial_timestamp,
+            datetime: initial_datetime,
+            timezone: String::new(),
+            epoch: String::new(),
             format: TimestampFormat::Seconds,
             custom_epoch: false,
             syncing: false,
             error: None,
-            _subscriptions: subscriptions,
         }
     }
 
-    fn zone(&self, cx: &Context<Self>) -> Option<String> {
-        let value = self.timezone.read(cx).value().to_string();
-        let trimmed = value.trim();
+    fn zone(&self) -> Option<&str> {
+        let trimmed = self.timezone.trim();
         if trimmed.is_empty() {
             None
         } else {
-            Some(trimmed.to_string())
+            Some(trimmed)
         }
     }
 
-    fn epoch_value(&self, cx: &Context<Self>) -> Option<String> {
+    fn epoch_value(&self) -> Option<&str> {
         if !self.custom_epoch {
             return None;
         }
-        let value = self.epoch.read(cx).value().to_string();
-        let trimmed = value.trim();
+        let trimmed = self.epoch.trim();
         if trimmed.is_empty() {
             None
         } else {
-            Some(trimmed.to_string())
+            Some(trimmed)
         }
     }
 
-    fn sync_from_timestamp(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+    fn sync_from_timestamp(&mut self) {
         if self.syncing {
             return;
         }
-        let source = self.timestamp.read(cx).value().to_string();
-        if source.trim().is_empty() {
+        if self.timestamp.trim().is_empty() {
             self.error = None;
-            self.set_datetime(String::new(), window, cx);
-            cx.notify();
+            self.set_datetime(String::new());
             return;
         }
-        let zone = self.zone(cx);
-        let epoch = self.epoch_value(cx);
-        match timestamp_to_datetime(&source, self.format, zone.as_deref(), epoch.as_deref()) {
+        match timestamp_to_datetime(
+            &self.timestamp,
+            self.format,
+            self.zone(),
+            self.epoch_value(),
+        ) {
             Ok(text) => {
                 self.error = None;
-                self.set_datetime(text, window, cx);
+                self.set_datetime(text);
             }
             Err(err) => {
-                self.error = Some(SharedString::from(err.to_string()));
+                self.error = Some(err.to_string());
             }
         }
-        cx.notify();
     }
 
-    fn sync_from_datetime(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+    fn sync_from_datetime(&mut self) {
         if self.syncing {
             return;
         }
-        let source = self.datetime.read(cx).value().to_string();
-        if source.trim().is_empty() {
+        if self.datetime.trim().is_empty() {
             self.error = None;
-            self.set_timestamp(String::new(), window, cx);
-            cx.notify();
+            self.set_timestamp(String::new());
             return;
         }
-        let zone = self.zone(cx);
-        let epoch = self.epoch_value(cx);
-        match datetime_to_timestamp(&source, self.format, zone.as_deref(), epoch.as_deref()) {
+        match datetime_to_timestamp(&self.datetime, self.format, self.zone(), self.epoch_value()) {
             Ok(text) => {
                 self.error = None;
-                self.set_timestamp(text, window, cx);
+                self.set_timestamp(text);
             }
             Err(err) => {
-                self.error = Some(SharedString::from(err.to_string()));
+                self.error = Some(err.to_string());
             }
         }
-        cx.notify();
     }
 
-    fn set_datetime(&mut self, value: String, window: &mut Window, cx: &mut Context<Self>) {
+    fn set_datetime(&mut self, value: String) {
         self.syncing = true;
-        self.datetime.update(cx, |input, cx| {
-            input.set_value(value, window, cx);
-        });
+        self.datetime = value;
         self.syncing = false;
     }
 
-    fn set_timestamp(&mut self, value: String, window: &mut Window, cx: &mut Context<Self>) {
+    fn set_timestamp(&mut self, value: String) {
         self.syncing = true;
-        self.timestamp.update(cx, |input, cx| {
-            input.set_value(value, window, cx);
-        });
+        self.timestamp = value;
         self.syncing = false;
     }
 
-    fn set_format(
-        &mut self,
-        format: TimestampFormat,
-        window: &mut Window,
-        cx: &mut Context<Self>,
-    ) {
+    fn set_format(&mut self, format: TimestampFormat) {
         self.format = format;
-        self.sync_from_datetime(window, cx);
-    }
-
-    fn format_button(
-        &self,
-        id: &'static str,
-        label: &'static str,
-        value: TimestampFormat,
-        cx: &mut Context<Self>,
-    ) -> impl IntoElement {
-        Button::new(id)
-            .label(label)
-            .compact()
-            .selected(self.format == value)
-            .on_click(cx.listener(move |this, _, window, cx| {
-                this.set_format(value, window, cx);
-            }))
-    }
-
-    fn copy_datetime(&mut self, cx: &mut Context<Self>) {
-        if self.error.is_some() {
-            return;
-        }
-        let text = self.datetime.read(cx).value().to_string();
-        if text.is_empty() {
-            return;
-        }
-        cx.write_to_clipboard(ClipboardItem::new_string(text));
+        self.sync_from_datetime();
     }
 }
 
-impl ReceivesData for DateConverterView {
-    fn on_data_received(
-        &mut self,
-        payload: &str,
-        window: &mut Window,
-        cx: &mut Context<Self>,
-    ) {
+impl ToolView for DateConverterView {
+    fn ui(&mut self, ui: &mut egui::Ui) {
+        ui.horizontal_wrapped(|ui| {
+            for (label, value) in [
+                ("Ticks", TimestampFormat::Ticks),
+                ("秒", TimestampFormat::Seconds),
+                ("毫秒", TimestampFormat::Milliseconds),
+            ] {
+                if ui::toggle(ui, self.format == value, label).clicked() {
+                    self.set_format(value);
+                }
+            }
+            if ui.checkbox(&mut self.custom_epoch, "自定义纪元").changed() {
+                self.sync_from_timestamp();
+            }
+            if ui::primary_button(ui, "复制").clicked() && self.error.is_none() {
+                ui::copy_text(ui, &self.datetime);
+            }
+        });
+        ui.horizontal(|ui| {
+            ui.label("时区");
+            if ui
+                .add(
+                    egui::TextEdit::singleline(&mut self.timezone)
+                        .id_salt("date-tz")
+                        .hint_text("时区，默认本机")
+                        .desired_width(220.0),
+                )
+                .changed()
+            {
+                self.sync_from_timestamp();
+            }
+            if self.custom_epoch {
+                ui.label("纪元");
+                if ui
+                    .add(
+                        egui::TextEdit::singleline(&mut self.epoch)
+                            .id_salt("date-epoch")
+                            .hint_text("自定义纪元")
+                            .desired_width(220.0),
+                    )
+                    .changed()
+                {
+                    self.sync_from_timestamp();
+                }
+            }
+        });
+        ui::error_label(ui, self.error.as_deref());
+        ui.label("时间戳");
+        if ui::singleline(ui, "date-ts", &mut self.timestamp, "时间戳") {
+            self.sync_from_timestamp();
+        }
+        ui.label("日期");
+        if ui::singleline(ui, "date-dt", &mut self.datetime, "日期时间") {
+            self.sync_from_datetime();
+        }
+    }
+
+    fn on_data_received(&mut self, payload: &str) {
         let trimmed = payload.trim();
         let digits = trimmed.strip_prefix('-').unwrap_or(trimmed);
         if !digits.is_empty() && digits.chars().all(|c| c.is_ascii_digit()) {
-            self.set_timestamp(trimmed.to_string(), window, cx);
-            self.sync_from_timestamp(window, cx);
+            self.set_timestamp(trimmed.to_string());
+            self.sync_from_timestamp();
         } else {
-            self.set_datetime(trimmed.to_string(), window, cx);
-            self.sync_from_datetime(window, cx);
+            self.set_datetime(trimmed.to_string());
+            self.sync_from_datetime();
         }
-    }
-}
-
-impl Render for DateConverterView {
-    fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        v_flex()
-            .size_full()
-            .p_4()
-            .gap_3()
-            .child(
-                h_flex()
-                    .gap_2()
-                    .items_center()
-                    .flex_wrap()
-                    .child(self.format_button("fmt-ticks", "Ticks", TimestampFormat::Ticks, cx))
-                    .child(self.format_button("fmt-secs", "秒", TimestampFormat::Seconds, cx))
-                    .child(self.format_button(
-                        "fmt-ms",
-                        "毫秒",
-                        TimestampFormat::Milliseconds,
-                        cx,
-                    ))
-                    .child(
-                        Switch::new("custom-epoch")
-                            .label("自定义纪元")
-                            .checked(self.custom_epoch)
-                            .on_click(cx.listener(|this, checked, window, cx| {
-                                this.custom_epoch = *checked;
-                                this.sync_from_timestamp(window, cx);
-                            })),
-                    )
-                    .child(
-                        Button::new("copy-output")
-                            .primary()
-                            .label("复制")
-                            .on_click(cx.listener(|this, _, _, cx| {
-                                this.copy_datetime(cx);
-                            })),
-                    ),
-            )
-            .child(
-                h_flex()
-                    .gap_2()
-                    .items_center()
-                    .child("时区")
-                    .child(Input::new(&self.timezone).w_64())
-                    .when(self.custom_epoch, |this| {
-                        this.child("纪元").child(Input::new(&self.epoch).w_64())
-                    }),
-            )
-            .when_some(self.error.clone(), |this, message| {
-                this.child(div().text_color(cx.theme().danger).child(message))
-            })
-            .child(
-                v_flex()
-                    .gap_1()
-                    .child("时间戳")
-                    .child(Input::new(&self.timestamp)),
-            )
-            .child(
-                v_flex()
-                    .gap_1()
-                    .child("日期")
-                    .child(Input::new(&self.datetime)),
-            )
     }
 }
 
@@ -295,19 +191,10 @@ impl Render for DateConverterView {
 mod tests {
     use super::*;
 
-    #[gpui::test]
-    fn opens_with_stable_initial_values(cx: &mut gpui::TestAppContext) {
-        cx.update(gpui_component::init);
-        let (view, cx) = cx.add_window_view(DateConverterView::new);
-        let (timestamp, datetime) = cx.update(|_, cx| {
-            let view = view.read(cx);
-            (
-                view.timestamp.read(cx).value().to_string(),
-                view.datetime.read(cx).value().to_string(),
-            )
-        });
-
-        assert_eq!(timestamp, "0");
-        assert!(!datetime.is_empty());
+    #[test]
+    fn opens_with_stable_initial_values() {
+        let view = DateConverterView::new();
+        assert_eq!(view.timestamp, "0");
+        assert!(!view.datetime.is_empty());
     }
 }

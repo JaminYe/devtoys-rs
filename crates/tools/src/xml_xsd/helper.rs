@@ -55,10 +55,7 @@ pub fn validate_xml_xsd(xml: &str, xsd: &str) -> Vec<XmlReport> {
     let mut reports = Vec::new();
 
     if xsd_doc.root_name.is_none() {
-        reports.push(warning(
-            None,
-            "XSD 未声明根 xs:element，跳过根名校验",
-        ));
+        reports.push(warning(None, "XSD 未声明根 xs:element，跳过根名校验"));
     }
 
     if let Some(expected) = xsd_doc.root_name.as_deref() {

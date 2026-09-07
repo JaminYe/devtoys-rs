@@ -1,10 +1,10 @@
 # DevToys-RS
 
-基于 [GPUI](https://github.com/zed-industries/zed) 构建的跨平台开发者工具箱，灵感来自 [DevToys](https://github.com/veler/DevToys)，使用 Rust 实现。
+基于 [egui](https://github.com/emilk/egui) 构建的跨平台开发者工具箱，灵感来自 [DevToys](https://github.com/veler/DevToys)，使用 Rust 实现。
 
 ## ✨ 特性
 
-- 🖥️ **原生跨平台 GUI** — 基于 GPUI 高性能渲染（Windows / macOS / Linux）
+- 🖥️ **原生跨平台 GUI** — 基于 egui / eframe 立即模式渲染（Windows / macOS / Linux）
 - ⌨️ **CLI 支持** — 所有工具能力均可通过 `devtoys-cli` 命令行调用
 - 🔍 **智能识别** — 粘贴文本自动检测数据类型并推荐工具
 - 🧩 **插件化架构** — 工具以模块化方式注册，易于扩展
@@ -37,7 +37,7 @@ cargo build --release -p devtoys
 cargo build --release -p devtoys-cli
 ```
 
-> Linux 需要安装 GPUI 相关依赖：libxkbcommon、libwayland、libfontconfig 等，详见 [.github/workflows/build.yml](.github/workflows/build.yml)
+> Linux 需要安装 egui 相关依赖：libxkbcommon、libwayland 等，详见 [.github/workflows/build.yml](.github/workflows/build.yml)
 
 ## 🚀 下载
 
@@ -57,7 +57,7 @@ crates/
 ├── api/      # 公共类型：工具元数据、分组、设置、Detector trait
 ├── core/     # 核心逻辑：注册表、检测器调度、设置存储
 ├── tools/    # 全部业务工具实现
-├── host/     # GPUI 桌面宿主：窗口、侧栏、设置界面
+├── host/     # egui 桌面宿主：窗口、侧栏、设置界面
 └── cli/      # 命令行入口
 ```
 

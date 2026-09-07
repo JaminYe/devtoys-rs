@@ -121,7 +121,5 @@ fn output_name(input: &Path, format: ImageTargetFormat) -> PathBuf {
 }
 
 fn path_is_dir_hint(path: &Path) -> bool {
-    path.as_os_str()
-        .to_string_lossy()
-        .ends_with(['/', '\\'])
+    path.as_os_str().to_string_lossy().ends_with(['/', '\\'])
 }

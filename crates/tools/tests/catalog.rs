@@ -1,10 +1,34 @@
 use clap::Command;
 use devtoys_api::{GroupId, JSON_FORMATTER_ID, SETTINGS_ID};
-use devtoys_tools::{all_cli_tools, all_tools, build_cli};
-
+#[cfg(feature = "gui")]
+use devtoys_tools::open_gui_tool;
+use devtoys_tools::{all_cli_tools, all_tools, build_cli, default_catalog, ToolCatalog};
 #[test]
 fn thirty_business_tools_are_registered() {
     assert_eq!(all_tools().len(), 30);
+}
+
+#[test]
+fn default_catalog_direct_access() {
+    let catalog = default_catalog();
+    assert_eq!(catalog.tools().len(), 30);
+    assert_eq!(catalog.len(), 30);
+    assert!(!catalog.is_empty());
+    assert_eq!(catalog.all_metadata().len(), 30);
+    assert_eq!(catalog.all_cli().len(), 26);
+    assert!(!catalog.all_detectors().is_empty());
+
+    assert_eq!(ToolCatalog::default_catalog().len(), 30);
+}
+
+#[cfg(feature = "gui")]
+#[test]
+fn default_catalog_and_open_gui_tool_open_view() {
+    let catalog = default_catalog();
+    assert!(catalog.open_view(JSON_FORMATTER_ID).is_some());
+    assert!(open_gui_tool(JSON_FORMATTER_ID).is_some());
+    assert!(catalog.open_view("NonExistentTool").is_none());
+    assert!(open_gui_tool("NonExistentTool").is_none());
 }
 
 #[test]
