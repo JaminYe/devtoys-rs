@@ -39,9 +39,7 @@ impl XmlXsdView {
 impl ToolView for XmlXsdView {
     fn ui(&mut self, ui: &mut egui::Ui) {
         ui.horizontal_wrapped(|ui| {
-            if ui::primary_button(ui, "复制").clicked() {
-                ui::copy_text(ui, &self.output);
-            }
+            ui::copy_button(ui, Some(self.output.as_str()));
         });
         ui::error_label(ui, self.error.as_deref());
         let avail = ui.available_size();

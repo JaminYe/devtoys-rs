@@ -48,9 +48,7 @@ impl ToolView for SqlFormatterView {
             if ui.checkbox(&mut self.leading_comma, "前导逗号").changed() {
                 self.reformat();
             }
-            if ui::primary_button(ui, "复制").clicked() {
-                ui::copy_text(ui, &self.output);
-            }
+            ui::copy_button(ui, Some(self.output.as_str()));
         });
         ui.horizontal_wrapped(|ui| {
             ui.label("方言");

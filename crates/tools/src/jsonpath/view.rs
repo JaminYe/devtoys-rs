@@ -43,9 +43,7 @@ impl JsonPathView {
 impl ToolView for JsonPathView {
     fn ui(&mut self, ui: &mut egui::Ui) {
         ui.horizontal_wrapped(|ui| {
-            if ui::primary_button(ui, "复制").clicked() && self.error.is_none() {
-                ui::copy_text(ui, &self.output);
-            }
+            ui::copy_button(ui, self.error.is_none().then_some(self.output.as_str()));
         });
         ui::error_label(ui, self.error.as_deref());
         let avail = ui.available_size();

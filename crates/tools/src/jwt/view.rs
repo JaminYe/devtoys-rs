@@ -172,13 +172,13 @@ impl ToolView for JwtView {
             dirty |= ui
                 .checkbox(&mut self.secret_is_base64, "Base64 密钥")
                 .changed();
-            if ui::primary_button(ui, "复制").clicked() && self.error.is_none() {
-                let text = match self.mode {
-                    JwtMode::Decode => &self.token,
-                    JwtMode::Encode => &self.token_out,
-                };
-                ui::copy_text(ui, text);
-            }
+            ui::copy_button(
+                ui,
+                self.error.is_none().then_some(match self.mode {
+                    JwtMode::Decode => self.token.as_str(),
+                    JwtMode::Encode => self.token_out.as_str(),
+                }),
+            );
         });
         ui::error_label(ui, self.error.as_deref());
         dirty |= ui::singleline(ui, "jwt-secret", &mut self.secret, "密钥");

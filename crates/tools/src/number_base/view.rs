@@ -255,14 +255,14 @@ impl ToolView for NumberBaseView {
             if ui.checkbox(&mut self.thousands, "千分位").changed() {
                 self.sync_from(NumberBase::Decimal);
             }
-            if ui::primary_button(ui, "复制").clicked() && self.error.is_none() {
-                let text = if self.advanced {
-                    &self.advanced_output
+            ui::copy_button(
+                ui,
+                self.error.is_none().then_some(if self.advanced {
+                    self.advanced_output.as_str()
                 } else {
-                    &self.hexadecimal
-                };
-                ui::copy_text(ui, text);
-            }
+                    self.hexadecimal.as_str()
+                }),
+            );
         });
         ui::error_label(ui, self.error.as_deref());
         if self.advanced {

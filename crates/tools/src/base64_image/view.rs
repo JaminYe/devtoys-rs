@@ -53,9 +53,7 @@ impl Base64ImageView {
 impl ToolView for Base64ImageView {
     fn ui(&mut self, ui: &mut egui::Ui) {
         ui.horizontal_wrapped(|ui| {
-            if ui::primary_button(ui, "复制").clicked() {
-                ui::copy_text(ui, &self.input);
-            }
+            ui::copy_button(ui, Some(self.input.as_str()));
         });
         ui::error_label(ui, self.error.as_deref());
         if let Some(summary) = &self.preview {

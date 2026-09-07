@@ -69,9 +69,7 @@ impl ToolView for LoremIpsumView {
             ui.allocate_ui(egui::vec2(72.0, ui.spacing().interact_size.y), |ui| {
                 dirty |= ui::singleline(ui, "lorem-len", &mut self.length, "长度");
             });
-            if ui::primary_button(ui, "复制").clicked() && self.error.is_none() {
-                ui::copy_text(ui, &self.output);
-            }
+            ui::copy_button(ui, self.error.is_none().then_some(self.output.as_str()));
         });
         if dirty {
             self.regenerate();

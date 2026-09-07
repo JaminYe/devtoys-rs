@@ -70,9 +70,7 @@ impl ToolView for HashChecksumView {
                 }
             }
             dirty |= ui.checkbox(&mut self.uppercase, "大写").changed();
-            if ui::primary_button(ui, "复制").clicked() && self.error.is_none() {
-                ui::copy_text(ui, &self.output);
-            }
+            ui::copy_button(ui, self.error.is_none().then_some(self.output.as_str()));
         });
         ui.columns(2, |cols| {
             cols[0].label("HMAC 密钥");

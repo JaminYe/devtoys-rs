@@ -79,9 +79,7 @@ impl ToolView for TextAnalyzerView {
                     self.apply_op(op);
                 }
             }
-            if ui::primary_button(ui, "复制").clicked() {
-                ui::copy_text(ui, &self.input);
-            }
+            ui::copy_button(ui, Some(self.input.as_str()));
         });
         let cursor_line = self.cursor_line;
         let cursor_col = self.cursor_col;

@@ -77,9 +77,7 @@ impl ToolView for PasswordView {
             if ui.button("生成").clicked() {
                 dirty = true;
             }
-            if ui::primary_button(ui, "复制").clicked() && self.error.is_none() {
-                ui::copy_text(ui, &self.output);
-            }
+            ui::copy_button(ui, self.error.is_none().then_some(self.output.as_str()));
         });
         ui.label("排除字符");
         dirty |= ui::singleline(ui, "pwd-exclude", &mut self.exclude, "排除字符");

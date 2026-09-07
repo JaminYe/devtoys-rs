@@ -51,9 +51,7 @@ impl ToolView for ListCompareView {
             {
                 self.recompute();
             }
-            if ui::primary_button(ui, "复制").clicked() {
-                ui::copy_text(ui, &self.output);
-            }
+            ui::copy_button(ui, Some(self.output.as_str()));
         });
         let spacing = 12.0;
         let total = ui.available_size();
