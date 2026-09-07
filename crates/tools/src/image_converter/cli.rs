@@ -6,7 +6,8 @@ use clap::{Arg, ArgMatches, Command};
 use crate::cli::{CliError, CliTool};
 use crate::color_blindness::is_static_image_path;
 
-use super::{convert_image, static_images_in_dir, ImageTargetFormat, ID};
+use super::execute::convert_paths;
+use super::{static_images_in_dir, ImageTargetFormat, ID};
 
 pub fn cli_tool() -> CliTool {
     CliTool {
@@ -68,8 +69,19 @@ fn convert_one_file(
     if !input.to_str().is_some_and(is_static_image_path) {
         return Err(CliError::new("不支持的图像类型"));
     }
-    let bytes = fs::read(input).map_err(|_| CliError::new("无法读取输入文件"))?;
-    let converted = convert_image(&bytes, format).map_err(|err| CliError::new(err.to_string()))?;
+    let path = input.to_string_lossy().to_string();
+    let batch = convert_paths(&[path], format);
+    let converted = match batch.successes.into_iter().next() {
+        Some(success) => success.bytes,
+        None => {
+            let msg = batch
+                .failures
+                .first()
+                .map(|f| f.error.clone())
+                .unwrap_or_else(|| "无法转换图像".into());
+            return Err(CliError::new(msg));
+        }
+    };
     let dest = match output {
         Some(path) if path.is_dir() || path_is_dir_hint(path) => {
             fs::create_dir_all(path).map_err(|_| CliError::new("无法写入输出目录"))?;
@@ -102,11 +114,21 @@ fn convert_directory(
     if files.is_empty() {
         return Err(CliError::new("目录中没有静态图像"));
     }
-    for file in files {
-        let bytes = fs::read(&file).map_err(|_| CliError::new("无法读取输入文件"))?;
-        let converted =
-            convert_image(&bytes, format).map_err(|err| CliError::new(err.to_string()))?;
-        let dest = dest_dir.join(output_name(&file, format));
+    for file in &files {
+        let path = file.to_string_lossy().to_string();
+        let batch = convert_paths(&[path], format);
+        let converted = match batch.successes.into_iter().next() {
+            Some(success) => success.bytes,
+            None => {
+                let msg = batch
+                    .failures
+                    .first()
+                    .map(|f| f.error.clone())
+                    .unwrap_or_else(|| "无法转换图像".into());
+                return Err(CliError::new(msg));
+            }
+        };
+        let dest = dest_dir.join(output_name(file, format));
         fs::write(&dest, converted).map_err(|_| CliError::new("无法写入输出文件"))?;
     }
     Ok(())

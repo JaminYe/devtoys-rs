@@ -1,7 +1,7 @@
 use crate::slot::ToolView;
 use crate::ui;
 
-use super::{convert_image, ImageTargetFormat};
+use super::ImageTargetFormat;
 
 pub struct ImageConverterView {
     path: String,
@@ -26,12 +26,7 @@ impl ImageConverterView {
     }
 
     fn reconvert(&mut self) {
-        let paths: Vec<&str> = self
-            .path
-            .lines()
-            .map(str::trim)
-            .filter(|line| !line.is_empty())
-            .collect();
+        let paths = super::execute::parse_paths(&self.path);
         if paths.is_empty() {
             self.error = None;
             self.status = None;
@@ -40,30 +35,20 @@ impl ImageConverterView {
             return;
         }
 
-        let n = paths.len();
-        let first = paths[0].to_string();
-        match std::fs::read(&first) {
-            Ok(bytes) => match convert_image(&bytes, self.target) {
-                Ok(converted) => {
-                    self.error = None;
-                    self.preview = Some(converted);
-                    self.tex = None;
-                    self.status = Some(format!("已转换 {n} 个路径 → {}", self.target.as_str()));
-                }
-                Err(_) => {
-                    self.preview = None;
-                    self.tex = None;
-                    self.status = None;
-                    self.error = Some("无法转换图像".into());
-                }
-            },
-            Err(_) => {
-                self.preview = None;
-                self.tex = None;
-                self.status = None;
-                self.error = Some("无法读取图像".into());
-            }
+        let batch = super::execute::convert_paths(&paths, self.target);
+        self.error = batch.error_message();
+        if batch.succeeded() > 0 {
+            self.preview = Some(batch.successes[0].bytes.clone());
+            self.status = Some(format!(
+                "已转换 {} 个路径 → {}",
+                batch.succeeded(),
+                self.target.as_str()
+            ));
+        } else {
+            self.preview = None;
+            self.status = None;
         }
+        self.tex = None;
     }
 }
 

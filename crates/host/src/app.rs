@@ -6,7 +6,8 @@ use devtoys_api::{
     GroupId, ThemePreference, ToolMetadata, ALL_TOOLS_LABEL, FAVORITES_LABEL, SETTINGS_ID,
 };
 use devtoys_core::{
-    AppState, DetectionCoordinator, DetectionEngine, Recommendation, SearchOutcome, SettingsStore,
+    AppState, CoreError, DetectionCoordinator, DetectionEngine, Recommendation, SearchOutcome,
+    SettingsStore,
 };
 use devtoys_tools::{default_catalog, ToolHandle};
 use egui::{Align, CornerRadius, Frame, Layout, Margin, Stroke, Vec2, vec2};
@@ -32,6 +33,7 @@ pub struct Workspace {
     recommendations: Vec<Recommendation>,
     palette: Palette,
     applied_dark: Option<bool>,
+    settings_error: Option<String>,
 }
 
 impl Workspace {
@@ -52,6 +54,7 @@ impl Workspace {
             recommendations: Vec::new(),
             palette: Palette::dark(),
             applied_dark: None,
+            settings_error: None,
         }
     }
 
@@ -161,6 +164,19 @@ impl Workspace {
                     handle.on_data_received(&payload);
                 }
             }
+        }
+    }
+
+    fn apply_setting(&mut self, result: Result<(), CoreError>) {
+        match result {
+            Ok(()) => self.settings_error = None,
+            Err(e) => self.settings_error = Some(e.to_string()),
+        }
+    }
+
+    fn render_settings_error(&self, ui: &mut egui::Ui, palette: Palette) {
+        if let Some(msg) = &self.settings_error {
+            ui.colored_label(palette.danger, format!("设置保存失败，本次更改未写入磁盘：{msg}"));
         }
     }
 
@@ -497,6 +513,7 @@ impl Workspace {
                         .color(palette.dim),
                 );
                 ui.add_space(16.0);
+                self.render_settings_error(ui, palette);
 
                 widgets::section_card(ui, &palette, |ui| {
                     ui.horizontal(|ui| {
@@ -523,7 +540,8 @@ impl Workspace {
                         ] {
                             let selected = theme == value;
                             if crate_toggle(ui, selected, label).clicked() {
-                                let _ = self.state.set_theme(value);
+                                let result = self.state.set_theme(value);
+                                self.apply_setting(result);
                                 self.applied_dark = None;
                             }
                         }
@@ -548,7 +566,8 @@ impl Workspace {
                         .checkbox(&mut detection, "Smart Detection 总开关")
                         .changed()
                     {
-                        let _ = self.state.set_smart_detection_enabled(detection);
+                        let result = self.state.set_smart_detection_enabled(detection);
+                        self.apply_setting(result);
                         if !detection {
                             self.coordinator.clear();
                             self.recommendations.clear();
@@ -557,7 +576,8 @@ impl Workspace {
                     ui.add_enabled_ui(detection, |ui| {
                         let mut paste = paste;
                         if ui.checkbox(&mut paste, "推荐工具自动粘贴").changed() {
-                            let _ = self.state.set_smart_detection_paste(paste);
+                            let result = self.state.set_smart_detection_paste(paste);
+                            self.apply_setting(result);
                         }
                     });
                 });
@@ -575,6 +595,8 @@ impl Workspace {
         let group = meta.map(|tool| tool.group.display_name());
         let favorited = self.state.is_favorite(id);
         let tool_id = id.to_string();
+
+        self.render_settings_error(ui, palette);
 
         ui.horizontal(|ui| {
             ui.label(
@@ -606,7 +628,8 @@ impl Workspace {
                     )
                     .clicked()
                     {
-                        let _ = self.state.toggle_favorite(&tool_id);
+                        let result = self.state.toggle_favorite(&tool_id);
+                        self.apply_setting(result);
                     }
                 });
             }

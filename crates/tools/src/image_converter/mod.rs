@@ -1,5 +1,6 @@
 mod cli;
 mod detector;
+mod execute;
 mod helper;
 #[cfg(feature = "gui")]
 mod view;
@@ -13,6 +14,9 @@ use devtoys_api::{Detector, GroupId, ToolId, ToolMetadata, TYPE_IMAGE};
 
 pub use cli::cli_tool;
 pub use detector::{StaticImageFilesDetector, TYPE_STATIC_IMAGE_FILES};
+pub use execute::{
+    convert_paths, parse_paths, ConversionBatch, FailedConversion, SuccessfulConversion,
+};
 pub use helper::{
     convert_image, convert_image_named, static_images_in_dir, ImageConvertError, ImageTargetFormat,
 };

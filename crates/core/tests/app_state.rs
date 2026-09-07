@@ -112,3 +112,64 @@ fn master_detection_off_is_persisted_and_disables_paste() {
     assert!(reloaded.settings().smart_detection_paste);
     assert!(!reloaded.settings().paste_enabled());
 }
+
+#[test]
+fn successful_save_matches_disk_and_memory() {
+    let dir = tempfile::tempdir().unwrap();
+    let store = SettingsStore::in_dir(dir.path());
+    let mut state = AppState::bootstrap(tools(), store.clone());
+
+    state.set_theme(ThemePreference::Dark).unwrap();
+    state.set_smart_detection_enabled(false).unwrap();
+    state.set_smart_detection_paste(false).unwrap();
+    state.toggle_favorite("b").unwrap();
+
+    let reloaded = AppState::bootstrap(tools(), store);
+    assert_eq!(reloaded.settings().theme, ThemePreference::Dark);
+    assert!(!reloaded.settings().smart_detection_enabled);
+    assert!(!reloaded.settings().smart_detection_paste);
+    assert!(reloaded.is_favorite("b"));
+
+    // In-memory state matches what was persisted to disk.
+    assert_eq!(state.settings().theme, reloaded.settings().theme);
+    assert_eq!(state.settings().favorites, reloaded.settings().favorites);
+}
+
+#[test]
+fn failed_save_keeps_theme_in_memory_but_not_disk() {
+    // A parent that is a regular file makes create_dir_all/write fail.
+    let dir = tempfile::tempdir().unwrap();
+    let blocker = dir.path().join("blocker");
+    std::fs::write(&blocker, b"x").unwrap();
+    let store = SettingsStore::in_dir(blocker.join("sub"));
+
+    let mut state = AppState::bootstrap(tools(), store.clone());
+    let err = state.set_theme(ThemePreference::Dark).unwrap_err();
+    assert!(matches!(err, CoreError::Io(_)));
+
+    // Optimistic update: memory keeps the change even though saving failed.
+    assert_eq!(state.settings().theme, ThemePreference::Dark);
+
+    // Disk was never written, so a fresh bootstrap reads the default.
+    let reloaded = AppState::bootstrap(tools(), store);
+    assert_eq!(reloaded.settings().theme, ThemePreference::System);
+}
+
+#[test]
+fn failed_save_keeps_favorite_in_memory_but_not_disk() {
+    let dir = tempfile::tempdir().unwrap();
+    let blocker = dir.path().join("blocker");
+    std::fs::write(&blocker, b"x").unwrap();
+    let store = SettingsStore::in_dir(blocker.join("sub"));
+
+    let mut state = AppState::bootstrap(tools(), store.clone());
+    let err = state.toggle_favorite("b").unwrap_err();
+    assert!(matches!(err, CoreError::Io(_)));
+
+    // Optimistic update: the favorite is kept in memory even on failure.
+    assert!(state.is_favorite("b"));
+
+    // Disk was never written, so a fresh bootstrap does not contain it.
+    let reloaded = AppState::bootstrap(tools(), store);
+    assert!(!reloaded.is_favorite("b"));
+}
