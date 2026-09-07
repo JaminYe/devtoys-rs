@@ -9,9 +9,11 @@ mod registry;
 mod settings_store;
 mod state;
 
-pub use detection::{DetectOptions, DetectionEngine, Recommendation};
 pub use clipboard::{rgba_to_png, ClipboardSource, InMemoryClipboard, SystemClipboard};
 pub use coordinator::DetectionCoordinator;
+pub use detection::{
+    validate, DetectOptions, DetectionAssemblyIssue, DetectionEngine, Recommendation,
+};
 pub use detectors::{
     Base64ImageDetector, Base64TextDetector, DateDetector, FileDetector, FilesDetector,
     GzipDetector, ImageDetector, ImageFileDetector, JsonArrayDetector, JsonDetector, TextDetector,

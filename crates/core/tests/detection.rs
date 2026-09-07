@@ -187,8 +187,10 @@ fn engine_nonstrict_json_includes_parent_text_tool() {
 }
 
 #[test]
-fn engine_nonstrict_skips_active_tool() {
+fn engine_nonstrict_includes_active_tool() {
     let tools = vec![json_tool(), text_tool()];
+    // The engine no longer filters active_tool — even the active tool is
+    // recommended. active_tool exclusion is owned by the coordinator.
     let recs = detect(
         &engine(&tools),
         r#"{ "json": 123 }"#,
@@ -197,9 +199,12 @@ fn engine_nonstrict_skips_active_tool() {
         true,
         false,
     );
-    assert_eq!(recs.len(), 1);
-    assert_eq!(recs[0].tool_id, "TextTool");
-    assert_eq!(recs[0].data_type, TYPE_TEXT);
+    assert_eq!(
+        recs.iter()
+            .map(|r| (r.tool_id.as_str(), r.data_type.as_str()))
+            .collect::<Vec<_>>(),
+        vec![(JSON_FORMATTER_ID, TYPE_JSON), ("TextTool", TYPE_TEXT)]
+    );
 
     let recs = detect(
         &engine(&tools),
@@ -209,9 +214,15 @@ fn engine_nonstrict_skips_active_tool() {
         true,
         false,
     );
-    assert_eq!(recs.len(), 1);
-    assert_eq!(recs[0].tool_id, JSON_FORMATTER_ID);
+    assert_eq!(
+        recs.iter()
+            .map(|r| (r.tool_id.as_str(), r.data_type.as_str()))
+            .collect::<Vec<_>>(),
+        vec![(JSON_FORMATTER_ID, TYPE_JSON), ("TextTool", TYPE_TEXT)]
+    );
 
+    // Strict mode still returns only the exact JSON type, regardless of
+    // active_tool.
     let recs = detect(
         &engine(&tools),
         r#"{ "json": 123 }"#,

@@ -15,6 +15,12 @@ pub struct DetectionCoordinator {
     clipboard: Box<dyn ClipboardSource>,
     last_clipboard: Option<RawData>,
     last_clipboard_at: Instant,
+    /// Untouched engine output (no active_tool filtering). This is the source of
+    /// truth so that leaving a tool page can restore a recommendation without
+    /// re-detecting.
+    raw_hits: Vec<Recommendation>,
+    /// The projected view exposed to callers: `raw_hits` with the current
+    /// `active_tool` excluded. Recomputed on every `poll`.
     recommendations: Vec<Recommendation>,
     detect_cancel: Arc<AtomicBool>,
     detect_gen: u64,
@@ -32,6 +38,7 @@ impl DetectionCoordinator {
             last_clipboard_at: Instant::now()
                 .checked_sub(Duration::from_millis(1000))
                 .unwrap_or_else(Instant::now),
+            raw_hits: Vec::new(),
             recommendations: Vec::new(),
             detect_cancel: Arc::new(AtomicBool::new(false)),
             detect_gen: 0,
@@ -46,16 +53,26 @@ impl DetectionCoordinator {
 
     /// Polls detection state, debouncing clipboard reads and collecting results.
     ///
-    /// - If `!enabled`: cancels pending detections, clears recommendations, and returns `None`.
-    /// - Drains completed detection results from the worker thread. If the generation matches
-    ///   the current `detect_gen`, recommendations are updated (filtering out `active_tool`).
-    /// - If at least 800ms have passed since the last clipboard check, reads the clipboard.
-    ///   If clipboard content has changed, starts a new detection task.
-    /// - Returns a reference to current recommendations if any exist.
+    /// The coordinator owns the recommendation lifecycle: it caches raw hits and
+    /// publishes a projection that excludes the current `active_tool`. This means
+    /// entering a tool only hides its recommendation (projection), and leaving it
+    /// with an unchanged clipboard restores the recommendation from cached raw
+    /// hits without re-detecting.
+    ///
+    /// - If `!enabled`: cancels pending detections, clears the raw hit cache and
+    ///   the projection, and returns `None`.
+    /// - Drains completed detection results from the worker thread. If the
+    ///   generation matches the current `detect_gen`, the raw hit cache is updated
+    ///   with the untouched engine output. Stale generational results are dropped.
+    /// - Recomputes the projection (raw hits excluding `active_tool`) each call.
+    /// - If at least 800ms have passed since the last clipboard check, reads the
+    ///   clipboard. If content changed, starts a new detection task.
+    /// - Returns a reference to the projection if non-empty, otherwise `None`.
     pub fn poll(&mut self, active_tool: Option<&str>, enabled: bool) -> Option<&[Recommendation]> {
         if !enabled {
             self.detect_cancel.store(true, Ordering::Relaxed);
             self.detect_rx = None;
+            self.raw_hits.clear();
             self.recommendations.clear();
             return None;
         }
@@ -65,10 +82,7 @@ impl DetectionCoordinator {
             match rx.try_recv() {
                 Ok((gen, hits)) => {
                     if gen == self.detect_gen {
-                        self.recommendations = hits
-                            .into_iter()
-                            .filter(|hit| active_tool != Some(hit.tool_id.as_str()))
-                            .collect();
+                        self.raw_hits = hits;
                     }
                     self.detect_rx = None;
                 }
@@ -79,10 +93,15 @@ impl DetectionCoordinator {
             }
         }
 
-        // Retain only recommendations that don't match the current active tool
-        if let Some(active) = active_tool {
-            self.recommendations.retain(|hit| hit.tool_id != active);
-        }
+        // Project the cached raw hits onto the current active tool. Because raw
+        // hits are never mutated by `active_tool`, leaving a tool page restores
+        // the hidden recommendation on the next poll.
+        self.recommendations = self
+            .raw_hits
+            .iter()
+            .filter(|hit| active_tool != Some(hit.tool_id.as_str()))
+            .cloned()
+            .collect();
 
         // 800ms debounce check for clipboard reading
         if self.last_clipboard_at.elapsed() >= Duration::from_millis(800) {
@@ -90,10 +109,11 @@ impl DetectionCoordinator {
             if let Some(raw) = self.clipboard.read_raw() {
                 if self.last_clipboard.as_ref() != Some(&raw) {
                     self.last_clipboard = Some(raw.clone());
-                    self.start_detect(raw, active_tool);
+                    self.start_detect(raw);
                 }
             } else if self.last_clipboard.is_some() {
                 self.last_clipboard = None;
+                self.raw_hits.clear();
                 self.recommendations.clear();
                 self.detect_cancel.store(true, Ordering::Relaxed);
                 self.detect_rx = None;
@@ -111,14 +131,13 @@ impl DetectionCoordinator {
     ///
     /// Cancels any prior in-flight task, increments generation, sets up a 2-second timeout
     /// watchdog thread, and executes detection asynchronously.
-    pub fn start_detect(&mut self, raw: RawData, active_tool: Option<&str>) {
+    pub fn start_detect(&mut self, raw: RawData) {
         self.detect_cancel.store(true, Ordering::Relaxed);
         let cancel = Arc::new(AtomicBool::new(false));
         self.detect_cancel = cancel.clone();
         self.detect_gen = self.detect_gen.wrapping_add(1);
         let gen = self.detect_gen;
         let engine = self.engine.clone();
-        let active = active_tool.map(ToOwned::to_owned);
         let (tx, rx) = mpsc::channel();
         self.detect_rx = Some(rx);
 
@@ -136,7 +155,9 @@ impl DetectionCoordinator {
                 &raw,
                 DetectOptions {
                     strict: false,
-                    active_tool: active.as_deref(),
+                    // active_tool exclusion is owned by the coordinator, so the
+                    // engine always returns the full, untouched hit set.
+                    active_tool: None,
                     enabled: true,
                     cancel: worker_cancel.as_ref(),
                 },
@@ -145,10 +166,15 @@ impl DetectionCoordinator {
         });
     }
 
-    /// Cancels any in-flight detection and clears cached clipboard and recommendations.
+    /// Cancels any in-flight detection and clears cached clipboard, raw hits, and
+    /// the projection.
+    ///
+    /// Resetting `last_clipboard` to `None` means that re-enabling detection after
+    /// a `clear()` treats the next read as a change and re-detects fresh.
     pub fn clear(&mut self) {
         self.detect_cancel.store(true, Ordering::Relaxed);
         self.detect_rx = None;
+        self.raw_hits.clear();
         self.recommendations.clear();
         self.last_clipboard = None;
     }

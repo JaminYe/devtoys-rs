@@ -115,6 +115,41 @@ fn test_active_tool_dynamic_filtering() {
 }
 
 #[test]
+fn test_active_tool_enter_leave_restores() {
+    let engine = test_engine();
+    let clipboard = InMemoryClipboard::new();
+    let mut coordinator = DetectionCoordinator::new(engine, Box::new(clipboard.clone()));
+
+    clipboard.set_text("{\"key\": \"value\"}");
+    coordinator.poll(None, true);
+    wait_for_detection(&mut coordinator, None);
+
+    assert!(coordinator
+        .recommendations()
+        .iter()
+        .any(|r| r.tool_id == JSON_FORMATTER_ID));
+
+    // Entering the tool excludes it from the projection (no permanent removal).
+    let res = coordinator.poll(Some(JSON_FORMATTER_ID), true);
+    assert!(
+        res.is_none() || !res.unwrap().iter().any(|r| r.tool_id == JSON_FORMATTER_ID),
+        "active tool must be excluded from projection"
+    );
+
+    // Leaving the tool with an unchanged clipboard restores the recommendation
+    // purely from the cached raw hits — no re-detection required.
+    let res = coordinator.poll(None, true);
+    assert!(
+        res.is_some_and(|recs| recs.iter().any(|r| r.tool_id == JSON_FORMATTER_ID)),
+        "leaving the tool must restore the recommendation from cached raw hits"
+    );
+    assert!(coordinator
+        .recommendations()
+        .iter()
+        .any(|r| r.tool_id == JSON_FORMATTER_ID));
+}
+
+#[test]
 fn test_debounce_same_text() {
     let engine = test_engine();
     let clipboard = InMemoryClipboard::new();
@@ -169,6 +204,33 @@ fn test_disabled_clears_and_cancels() {
 }
 
 #[test]
+fn test_disable_reenable_redetects() {
+    let engine = test_engine();
+    let clipboard = InMemoryClipboard::new();
+    let mut coordinator = DetectionCoordinator::new(engine, Box::new(clipboard.clone()));
+
+    clipboard.set_text("{\"a\": 1}");
+    coordinator.poll(None, true);
+    wait_for_detection(&mut coordinator, None);
+    assert!(!coordinator.recommendations().is_empty());
+
+    // Disable: cancels and clears the raw hit cache + projection.
+    let res = coordinator.poll(None, false);
+    assert!(res.is_none());
+    assert!(coordinator.recommendations().is_empty());
+    assert!(!coordinator.is_detecting());
+
+    // Re-enable: clear() resets last_clipboard so a fresh detection starts once
+    // the clipboard changes past the debounce window.
+    coordinator.clear();
+    clipboard.set_text("{\"new\": [1, 2, 3]}");
+    std::thread::sleep(Duration::from_millis(850));
+    coordinator.poll(None, true);
+    wait_for_detection(&mut coordinator, None);
+    assert!(!coordinator.recommendations().is_empty());
+}
+
+#[test]
 fn test_clear_method() {
     let engine = test_engine();
     let clipboard = InMemoryClipboard::new();
@@ -214,11 +276,11 @@ fn test_generational_counter_stale_discard() {
     let mut coordinator = DetectionCoordinator::new(engine, Box::new(clipboard.clone()));
 
     // Start detection for generation 1 with JSON
-    coordinator.start_detect(RawData::text("{\"old\": 1}"), None);
+    coordinator.start_detect(RawData::text("{\"old\": 1}"));
     assert_eq!(coordinator.detect_gen(), 1);
 
     // Immediately supersede with generation 2 plain text
-    coordinator.start_detect(RawData::text("just plain text"), None);
+    coordinator.start_detect(RawData::text("just plain text"));
     assert_eq!(coordinator.detect_gen(), 2);
 
     wait_for_detection(&mut coordinator, None);

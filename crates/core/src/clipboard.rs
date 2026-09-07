@@ -1,5 +1,5 @@
-use std::sync::{Arc, Mutex};
 use devtoys_api::RawData;
+use std::sync::{Arc, Mutex};
 
 /// Trait abstracting clipboard content reading for Smart Detection.
 pub trait ClipboardSource: Send + Sync {
@@ -20,7 +20,9 @@ pub fn rgba_to_png(width: u32, height: u32, bytes: &[u8]) -> Option<Vec<u8>> {
     if width == 0 || height == 0 {
         return None;
     }
-    let expected_len = (width as usize).checked_mul(height as usize)?.checked_mul(4)?;
+    let expected_len = (width as usize)
+        .checked_mul(height as usize)?
+        .checked_mul(4)?;
     if bytes.len() != expected_len {
         return None;
     }
@@ -158,9 +160,9 @@ mod tests {
     fn test_rgba_to_png_valid() {
         // 2x2 image = 4 pixels * 4 = 16 bytes
         let pixels = vec![
-            255, 0, 0, 255,   // red
-            0, 255, 0, 255,   // green
-            0, 0, 255, 255,   // blue
+            255, 0, 0, 255, // red
+            0, 255, 0, 255, // green
+            0, 0, 255, 255, // blue
             255, 255, 255, 255, // white
         ];
         let png = rgba_to_png(2, 2, &pixels);
