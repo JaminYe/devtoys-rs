@@ -131,9 +131,7 @@ impl ToolView for DateConverterView {
             if ui.checkbox(&mut self.custom_epoch, "自定义纪元").changed() {
                 self.sync_from_timestamp();
             }
-            if ui::primary_button(ui, "复制").clicked() && self.error.is_none() {
-                ui::copy_text(ui, &self.datetime);
-            }
+            ui::copy_button(ui, self.error.is_none().then_some(self.datetime.as_str()));
         });
         ui.horizontal(|ui| {
             ui.label("时区");

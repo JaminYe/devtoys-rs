@@ -1,5 +1,4 @@
 mod cli;
-mod detector;
 mod helper;
 #[cfg(feature = "gui")]
 mod view;
@@ -10,10 +9,7 @@ use crate::cli::CliTool;
 use crate::slot::ToolHandle;
 pub use cli::cli_tool;
 use devtoys_api::{Detector, GroupId, ToolId, ToolMetadata, TYPE_DATE};
-pub use helper::{
-    datetime_to_timestamp, looks_like_date, timestamp_to_datetime, DateConvertError,
-    TimestampFormat,
-};
+pub use helper::{datetime_to_timestamp, timestamp_to_datetime, DateConvertError, TimestampFormat};
 #[cfg(feature = "gui")]
 pub use view::DateConverterView;
 
@@ -37,7 +33,7 @@ pub fn open_view() -> crate::slot::ToolHandle {
 }
 
 pub fn detectors() -> Vec<Box<dyn Detector>> {
-    vec![Box::new(detector::DateDetector)]
+    Vec::new()
 }
 
 #[derive(Default, Debug, Clone, Copy)]
@@ -76,7 +72,7 @@ mod tests {
         let tool = DateConverterTool;
         assert_eq!(tool.metadata().id.as_str(), ID);
         assert!(tool.cli().is_some());
-        assert!(!tool.detectors().is_empty());
+        assert!(tool.detectors().is_empty());
         #[cfg(feature = "gui")]
         assert!(tool.create_view().is_some());
 

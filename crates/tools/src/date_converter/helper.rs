@@ -71,25 +71,6 @@ pub fn datetime_to_timestamp(
     utc_to_timestamp_string(&utc, format, epoch)
 }
 
-pub fn looks_like_date(text: &str) -> bool {
-    let t = text.trim();
-    if t.is_empty() {
-        return false;
-    }
-    if looks_like_unix_timestamp(t) {
-        return true;
-    }
-    parse_datetime_to_utc(t, &Zone::Named(chrono_tz::UTC)).is_ok()
-}
-
-fn looks_like_unix_timestamp(text: &str) -> bool {
-    let digits = text.strip_prefix('-').unwrap_or(text);
-    if !digits.chars().all(|c| c.is_ascii_digit()) || digits.is_empty() {
-        return false;
-    }
-    matches!(digits.len(), 10 | 13)
-}
-
 fn resolve_zone(timezone: Option<&str>) -> Result<Zone, DateConvertError> {
     match timezone.map(str::trim).filter(|s| !s.is_empty()) {
         None | Some("local") | Some("本机") => Ok(Zone::Local),
