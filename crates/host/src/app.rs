@@ -1,6 +1,5 @@
 use std::collections::HashMap;
 use std::sync::Arc;
-use std::time::Duration;
 
 use devtoys_api::{
     GroupId, ThemePreference, ToolMetadata, ALL_TOOLS_LABEL, FAVORITES_LABEL, SETTINGS_ID,
@@ -10,7 +9,7 @@ use devtoys_core::{
     SettingsStore,
 };
 use devtoys_tools::{default_catalog, ToolHandle};
-use egui::{Align, CornerRadius, Frame, Layout, Margin, Stroke, Vec2, vec2};
+use egui::{vec2, Align, CornerRadius, Frame, Layout, Margin, Stroke, Vec2};
 
 use crate::theme::{self, Icon, Palette, SIDEBAR_WIDTH};
 use crate::widgets;
@@ -103,8 +102,8 @@ impl Workspace {
             self.recommendations.clear();
             ctx.request_repaint();
         }
-        if self.coordinator.is_detecting() {
-            ctx.request_repaint_after(Duration::from_millis(80));
+        if let Some(delay) = self.coordinator.next_poll_after() {
+            ctx.request_repaint_after(delay);
         }
     }
 
@@ -172,7 +171,10 @@ impl Workspace {
 
     fn render_settings_error(&self, ui: &mut egui::Ui, palette: Palette) {
         if let Some(msg) = &self.settings_error {
-            ui.colored_label(palette.danger, format!("设置保存失败，本次更改未写入磁盘：{msg}"));
+            ui.colored_label(
+                palette.danger,
+                format!("设置保存失败，本次更改未写入磁盘：{msg}"),
+            );
         }
     }
 
@@ -203,7 +205,8 @@ impl Workspace {
         panel.show(ui, |ui| {
             ui.horizontal(|ui| {
                 let (badge, _) = ui.allocate_exact_size(Vec2::splat(32.0), egui::Sense::hover());
-                ui.painter().rect_filled(badge, CornerRadius::same(8), palette.accent);
+                ui.painter()
+                    .rect_filled(badge, CornerRadius::same(8), palette.accent);
                 theme::paint_icon(ui, Icon::SquareTerminal, badge, 16.0, palette.on_accent);
                 ui.add_space(4.0);
                 ui.label(
@@ -311,7 +314,6 @@ impl Workspace {
             }
         }
 
-
         for group in GroupId::ALL {
             let tools: Vec<(String, String)> = self
                 .state
@@ -388,10 +390,8 @@ impl Workspace {
                     for (index, _, name) in recs {
                         if ui
                             .add(
-                                egui::Button::new(
-                                    egui::RichText::new(name).color(palette.accent),
-                                )
-                                .fill(egui::Color32::TRANSPARENT),
+                                egui::Button::new(egui::RichText::new(name).color(palette.accent))
+                                    .fill(egui::Color32::TRANSPARENT),
                             )
                             .clicked()
                         {
@@ -455,10 +455,7 @@ impl Workspace {
                     palette.accent.gamma_multiply(0.12),
                 );
                 ui.painter().galley(
-                    egui::pos2(
-                        rect.left() + 8.0,
-                        rect.center().y - galley.size().y / 2.0,
-                    ),
+                    egui::pos2(rect.left() + 8.0, rect.center().y - galley.size().y / 2.0),
                     galley,
                     palette.accent,
                 );
@@ -469,7 +466,12 @@ impl Workspace {
         ui.add_space(8.0);
 
         if cards.is_empty() {
-            widgets::empty_state(ui, &palette, empty, "可从左侧浏览其他分组，或使用搜索快速定位");
+            widgets::empty_state(
+                ui,
+                &palette,
+                empty,
+                "可从左侧浏览其他分组，或使用搜索快速定位",
+            );
             return;
         }
 
@@ -564,9 +566,6 @@ impl Workspace {
                     {
                         let result = self.state.set_smart_detection_enabled(detection);
                         self.apply_setting(result);
-                        if !detection {
-                            self.coordinator.clear();
-                        }
                     }
                     ui.add_enabled_ui(detection, |ui| {
                         let mut paste = paste;
@@ -582,10 +581,7 @@ impl Workspace {
     fn show_tool_page(&mut self, ui: &mut egui::Ui, id: &str) {
         let palette = self.palette;
         let meta = self.tool_by_id(id);
-        let title = meta
-            .map(|tool| tool.display_name)
-            .unwrap_or(id)
-            .to_string();
+        let title = meta.map(|tool| tool.display_name).unwrap_or(id).to_string();
         let favorable = meta.map(|tool| tool.favorable).unwrap_or(false);
         let group = meta.map(|tool| tool.group.display_name());
         let favorited = self.state.is_favorite(id);
@@ -613,15 +609,8 @@ impl Workspace {
                     } else {
                         (Icon::Star, "收藏")
                     };
-                    if theme::icon_button(
-                        ui,
-                        icon,
-                        16.0,
-                        palette.secondary,
-                        palette.accent,
-                        label,
-                    )
-                    .clicked()
+                    if theme::icon_button(ui, icon, 16.0, palette.secondary, palette.accent, label)
+                        .clicked()
                     {
                         let result = self.state.toggle_favorite(&tool_id);
                         self.apply_setting(result);
@@ -681,12 +670,11 @@ impl Workspace {
     }
 }
 
+
 fn crate_toggle(ui: &mut egui::Ui, selected: bool, text: &str) -> egui::Response {
     let mut button = egui::Button::new(text);
     if selected {
-        button = button
-            .fill(ui.visuals().selection.bg_fill)
-            .selected(true);
+        button = button.fill(ui.visuals().selection.bg_fill).selected(true);
     }
     ui.add(button)
 }
@@ -703,5 +691,51 @@ impl eframe::App for Workspace {
 
     fn clear_color(&self, _visuals: &egui::Visuals) -> [f32; 4] {
         self.palette.window.to_normalized_gamma_f32()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use devtoys_core::InMemoryClipboard;
+    use std::time::Duration;
+
+    #[test]
+    fn idle_detection_tick_requests_a_future_egui_pass() {
+        let mut workspace = Workspace {
+            state: AppState::bootstrap(
+                Vec::new(),
+                SettingsStore::in_dir(
+                    std::env::temp_dir().join(format!("devtoys-idle-host-{}", std::process::id())),
+                ),
+            ),
+            coordinator: DetectionCoordinator::new(
+                Arc::new(DetectionEngine::new(Vec::new(), &[])),
+                Box::new(InMemoryClipboard::new()),
+            ),
+            page: Page::AllTools,
+            search: String::new(),
+            sessions: HashMap::new(),
+            recommendations: Vec::new(),
+            palette: Palette::dark(),
+            applied_dark: None,
+            settings_error: None,
+        };
+        let ctx = egui::Context::default();
+        // Egui requests startup passes; settle those before observing the host.
+        for _ in 0..4 {
+            ctx.run_ui(egui::RawInput::default(), |_| {})
+                .textures_delta
+                .clear();
+        }
+        let mut output = ctx.run_ui(egui::RawInput::default(), |ui| {
+            workspace.tick_detect(ui.ctx())
+        });
+        let delay = output.viewport_output[&egui::ViewportId::ROOT].repaint_delay;
+        output.textures_delta.clear();
+        assert!(
+            delay > Duration::ZERO && delay <= Duration::from_millis(800),
+            "idle monitoring must schedule egui, got {delay:?}"
+        );
     }
 }

@@ -29,6 +29,8 @@ WizardStyle=modern
 PrivilegesRequiredOverridesAllowed=dialog
 ChangesAssociations=no
 CloseApplications=no
+SetupIconFile=..\..\crates\host\assets\icon.ico
+UninstallDisplayIcon={app}\devtoys.exe
 
 [Languages]
 Name: "english"; MessagesFile: "compiler:Default.isl"
@@ -43,10 +45,11 @@ Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{
 [Files]
 Source: "..\..\target\{#Target}\release\devtoys.exe"; DestDir: "{app}"; Flags: ignoreversion
 Source: "..\..\target\{#Target}\release\devtoys-cli.exe"; DestDir: "{app}"; Flags: ignoreversion
+Source: "..\..\crates\host\assets\icon.ico"; DestDir: "{app}"; Flags: ignoreversion
 
 [Icons]
 Name: "{group}\{#MyAppName}"; Filename: "{app}\devtoys.exe"
-Name: "{group}\{#MyAppName} CLI"; Filename: "cmd.exe"; Parameters: "/K ""{app}\devtoys-cli.exe"" --help"
+Name: "{group}\{#MyAppName} CLI"; Filename: "cmd.exe"; Parameters: "/K ""{app}\devtoys-cli.exe"" --help"; IconFilename: "{app}\devtoys.exe"
 Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\devtoys.exe"; Tasks: desktopicon
 
 [Run]

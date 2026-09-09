@@ -8,8 +8,8 @@ use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 use std::sync::OnceLock;
 
-use skrifa::MetadataProvider as _;
 use skrifa::raw::TableProvider as _;
+use skrifa::MetadataProvider as _;
 
 /// Registered font name, file bytes, and face index.
 pub struct Fallback {

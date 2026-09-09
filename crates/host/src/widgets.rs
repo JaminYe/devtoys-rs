@@ -1,4 +1,4 @@
-use egui::{Align, CornerRadius, Layout, Rect, Sense, Stroke, Ui, Vec2, pos2, vec2};
+use egui::{pos2, vec2, Align, CornerRadius, Layout, Rect, Sense, Stroke, Ui, Vec2};
 
 use crate::theme::{self, Icon, Palette, RADIUS, RADIUS_SMALL};
 
@@ -24,7 +24,11 @@ pub fn nav_row(
             ui.painter()
                 .rect_filled(rect, CornerRadius::same(RADIUS_SMALL + 2), fill);
         }
-        let color = if active { palette.accent } else { palette.secondary };
+        let color = if active {
+            palette.accent
+        } else {
+            palette.secondary
+        };
         let icon_center = pos2(rect.left() + indent + 14.0, rect.center().y);
         theme::paint_icon(
             ui,
@@ -37,12 +41,19 @@ pub fn nav_row(
             fonts.layout(
                 label.to_owned(),
                 theme::regular(13.5),
-                if active { palette.text } else { palette.secondary },
+                if active {
+                    palette.text
+                } else {
+                    palette.secondary
+                },
                 (rect.right() - 10.0 - (icon_center.x + 16.0)).max(0.0),
             )
         });
         ui.painter().galley(
-            pos2(icon_center.x + 16.0, rect.center().y - galley.size().y / 2.0),
+            pos2(
+                icon_center.x + 16.0,
+                rect.center().y - galley.size().y / 2.0,
+            ),
             galley,
             color,
         );
@@ -76,8 +87,13 @@ pub fn tool_card(
                 palette.outline
             },
         );
-        ui.painter()
-            .rect(rect, CornerRadius::same(RADIUS), fill, stroke, egui::StrokeKind::Inside);
+        ui.painter().rect(
+            rect,
+            CornerRadius::same(RADIUS),
+            fill,
+            stroke,
+            egui::StrokeKind::Inside,
+        );
         let badge = Rect::from_min_size(
             pos2(rect.left() + 14.0, rect.center().y - 20.0),
             Vec2::splat(40.0),
@@ -98,11 +114,8 @@ pub fn tool_card(
                 rect.right() - 48.0 - text_x,
             )
         });
-        ui.painter().galley(
-            pos2(text_x, rect.top() + 14.0),
-            name_galley,
-            palette.text,
-        );
+        ui.painter()
+            .galley(pos2(text_x, rect.top() + 14.0), name_galley, palette.text);
         let group_galley = ui.fonts_mut(|fonts| {
             fonts.layout(
                 group.to_owned(),
@@ -111,21 +124,13 @@ pub fn tool_card(
                 rect.right() - 48.0 - text_x,
             )
         });
-        ui.painter().galley(
-            pos2(text_x, rect.top() + 34.0),
-            group_galley,
-            palette.dim,
-        );
+        ui.painter()
+            .galley(pos2(text_x, rect.top() + 34.0), group_galley, palette.dim);
 
         if recommended {
             let chip = "推荐";
             let chip_galley = ui.fonts_mut(|fonts| {
-                fonts.layout(
-                    chip.to_owned(),
-                    theme::regular(11.0),
-                    palette.accent,
-                    80.0,
-                )
+                fonts.layout(chip.to_owned(), theme::regular(11.0), palette.accent, 80.0)
             });
             let chip_size = vec2(chip_galley.size().x + 16.0, 22.0);
             let chip_rect = Rect::from_min_size(
@@ -150,7 +155,10 @@ pub fn tool_card(
         theme::paint_icon(
             ui,
             Icon::ChevronRight,
-            Rect::from_center_size(pos2(rect.right() - 20.0, rect.center().y), Vec2::splat(18.0)),
+            Rect::from_center_size(
+                pos2(rect.right() - 20.0, rect.center().y),
+                Vec2::splat(18.0),
+            ),
             16.0,
             palette.dim,
         );
@@ -159,20 +167,24 @@ pub fn tool_card(
 }
 
 pub fn empty_state(ui: &mut Ui, palette: &Palette, title: &str, hint: &str) {
-    ui.allocate_ui_with_layout(
-        ui.available_size(),
-        Layout::top_down(Align::Center),
-        |ui| {
-            ui.add_space(ui.available_height() * 0.28);
-            let (rect, _) = ui.allocate_exact_size(Vec2::splat(48.0), Sense::hover());
-            ui.painter()
-                .circle_filled(rect.center(), 24.0, palette.surface);
-            theme::paint_icon(ui, Icon::Inbox, rect, 22.0, palette.dim);
-            ui.add_space(12.0);
-            ui.label(egui::RichText::new(title).font(theme::semibold(15.0)).color(palette.text));
-            ui.label(egui::RichText::new(hint).font(theme::regular(13.0)).color(palette.dim));
-        },
-    );
+    ui.allocate_ui_with_layout(ui.available_size(), Layout::top_down(Align::Center), |ui| {
+        ui.add_space(ui.available_height() * 0.28);
+        let (rect, _) = ui.allocate_exact_size(Vec2::splat(48.0), Sense::hover());
+        ui.painter()
+            .circle_filled(rect.center(), 24.0, palette.surface);
+        theme::paint_icon(ui, Icon::Inbox, rect, 22.0, palette.dim);
+        ui.add_space(12.0);
+        ui.label(
+            egui::RichText::new(title)
+                .font(theme::semibold(15.0))
+                .color(palette.text),
+        );
+        ui.label(
+            egui::RichText::new(hint)
+                .font(theme::regular(13.0))
+                .color(palette.dim),
+        );
+    });
 }
 
 pub fn section_card(ui: &mut Ui, palette: &Palette, add: impl FnOnce(&mut Ui)) {

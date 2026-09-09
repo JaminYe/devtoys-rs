@@ -24,3 +24,6 @@ skrifa.workspace = true
 
 [target.'cfg(windows)'.dependencies]
 windows-sys = { version = "0.60", features = ["Win32_Globalization"] }
+
+[build-dependencies]
+embed-resource = "3"
