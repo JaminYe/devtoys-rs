@@ -1,6 +1,5 @@
 use std::sync::LazyLock;
 
-use crate::cli::CliTool;
 #[cfg(feature = "gui")]
 use crate::slot::ToolHandle;
 use devtoys_api::{Detector, ToolMetadata};
@@ -9,11 +8,6 @@ use devtoys_api::{Detector, ToolMetadata};
 pub trait Tool: Send + Sync {
     /// Returns the static metadata for this tool.
     fn metadata(&self) -> ToolMetadata;
-
-    /// Returns the CLI tool specification and runner, if supported.
-    fn cli(&self) -> Option<CliTool> {
-        None
-    }
 
     /// Returns smart detectors provided by this tool, if any.
     fn detectors(&self) -> Vec<Box<dyn Detector>> {
@@ -24,14 +18,6 @@ pub trait Tool: Send + Sync {
     #[cfg(feature = "gui")]
     fn create_view(&self) -> Option<ToolHandle> {
         None
-    }
-
-    /// Returns whether this tool supports Compact Overlay (picture-in-picture) mode.
-    ///
-    /// Tools that are too visually dense or require wide two-column diff views
-    /// (e.g. Text Compare, Markdown Preview) can override this to return false.
-    fn supports_compact_overlay(&self) -> bool {
-        self.metadata().supports_compact_overlay()
     }
 }
 
@@ -97,11 +83,6 @@ impl ToolCatalog {
         self.tools.iter().map(|tool| tool.metadata()).collect()
     }
 
-    /// Gathers CLI specifications for tools that support CLI.
-    pub fn all_cli(&self) -> Vec<CliTool> {
-        self.tools.iter().filter_map(|tool| tool.cli()).collect()
-    }
-
     /// Gathers all smart detectors from registered tools.
     pub fn all_detectors(&self) -> Vec<Box<dyn Detector>> {
         self.tools
@@ -119,26 +100,6 @@ impl ToolCatalog {
             }
         }
         None
-    }
-
-    /// Returns whether a tool by its unique ID supports compact overlay mode.
-    pub fn supports_compact_overlay(&self, id: &str) -> bool {
-        for tool in &self.tools {
-            if tool.metadata().id.as_str() == id {
-                return tool.supports_compact_overlay();
-            }
-        }
-        false
-    }
-
-    /// The 23 builtins plus `extensions`. Duplicate ids are not filtered here;
-    /// [`crate::load_extensions`] already skips builtin collisions.
-    pub fn with_extensions(extensions: Vec<Box<dyn Tool>>) -> Self {
-        let mut catalog = build_default_catalog();
-        for tool in extensions {
-            catalog.register_boxed(tool);
-        }
-        catalog
     }
 }
 
@@ -205,7 +166,6 @@ mod tests {
         assert_eq!(catalog.len(), 23);
         assert_eq!(catalog.tools().len(), 23);
         assert_eq!(catalog.all_metadata().len(), 23);
-        assert_eq!(catalog.all_cli().len(), 19);
         assert_eq!(ToolCatalog::default_catalog().len(), 23);
     }
 
@@ -247,14 +207,5 @@ mod tests {
             assert!(!meta.id.as_str().is_empty());
             assert!(!meta.display_name.is_empty());
         }
-    }
-
-    #[test]
-    fn compact_overlay_support_reflects_tool_preferences() {
-        let catalog = default_catalog();
-        assert!(catalog.supports_compact_overlay("JsonFormatter"));
-        assert!(!catalog.supports_compact_overlay("TextCompare"));
-        assert!(!catalog.supports_compact_overlay("MarkdownPreview"));
-        assert!(!catalog.supports_compact_overlay("NonExistentToolId"));
     }
 }

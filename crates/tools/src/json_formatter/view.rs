@@ -69,10 +69,10 @@ impl ToolView for JsonFormatterView {
     fn ui(&mut self, ui: &mut egui::Ui) {
         ui.horizontal_wrapped(|ui| {
             for (label, value) in [
-                (ui::t(ui, "common.two_spaces"), Indentation::TwoSpaces),
-                (ui::t(ui, "common.four_spaces"), Indentation::FourSpaces),
-                (ui::t(ui, "common.one_tab"), Indentation::OneTab),
-                (ui::t(ui, "common.minified"), Indentation::Minified),
+                (ui::t("common.two_spaces"), Indentation::TwoSpaces),
+                (ui::t("common.four_spaces"), Indentation::FourSpaces),
+                (ui::t("common.one_tab"), Indentation::OneTab),
+                (ui::t("common.minified"), Indentation::Minified),
             ] {
                 if ui::toggle(ui, self.indent == value, label).clicked() {
                     self.indent = value;
@@ -80,7 +80,7 @@ impl ToolView for JsonFormatterView {
                 }
             }
             if ui
-                .checkbox(&mut self.sort_properties, ui::t(ui, "json.sort_properties"))
+                .checkbox(&mut self.sort_properties, ui::t("json.sort_properties"))
                 .changed()
             {
                 self.reformat();
@@ -89,7 +89,7 @@ impl ToolView for JsonFormatterView {
         });
         let err_text = self.error.as_deref().map(|e| {
             if e == "非法 JSON" {
-                ui::t(ui, "json.invalid")
+                ui::t("json.invalid")
             } else {
                 e
             }
@@ -101,7 +101,7 @@ impl ToolView for JsonFormatterView {
             |ui| {
                 input_changed = ui::labeled_code_editor(
                     ui,
-                    ui::t(ui, "common.input"),
+                    ui::t("common.input"),
                     "json-in",
                     &mut self.input,
                     "粘贴 JSON",
@@ -112,7 +112,7 @@ impl ToolView for JsonFormatterView {
             |ui| {
                 ui::labeled_code_editor(
                     ui,
-                    ui::t(ui, "common.output"),
+                    ui::t("common.output"),
                     "json-out",
                     &mut self.output,
                     "格式化结果",
@@ -273,25 +273,17 @@ mod tests {
             view.ui(ui);
         });
         out_zh.textures_delta.clear();
-        let zh_texts: Vec<String> = out_zh.shapes.iter().filter_map(|s| match &s.shape {
-            egui::Shape::Text(t) => Some(t.galley.text().to_string()),
-            _ => None,
-        }).collect();
-        assert!(zh_texts.iter().any(|t| t == "非法 JSON"), "ZhCn should contain '非法 JSON'");
-
-        // EnUs UI
-        let ctx_en = egui::Context::default();
-        ctx_en.data_mut(|d| {
-            d.insert_temp(egui::Id::new("app_language"), devtoys_api::Language::EnUs);
-        });
-        let mut out_en = ctx_en.run_ui(egui::RawInput::default(), |ui| {
-            view.ui(ui);
-        });
-        out_en.textures_delta.clear();
-        let en_texts: Vec<String> = out_en.shapes.iter().filter_map(|s| match &s.shape {
-            egui::Shape::Text(t) => Some(t.galley.text().to_string()),
-            _ => None,
-        }).collect();
-        assert!(en_texts.iter().any(|t| t == "Invalid JSON"), "EnUs should contain 'Invalid JSON'");
+        let zh_texts: Vec<String> = out_zh
+            .shapes
+            .iter()
+            .filter_map(|s| match &s.shape {
+                egui::Shape::Text(t) => Some(t.galley.text().to_string()),
+                _ => None,
+            })
+            .collect();
+        assert!(
+            zh_texts.iter().any(|t| t == "非法 JSON"),
+            "ZhCn should contain '非法 JSON'"
+        );
     }
 }

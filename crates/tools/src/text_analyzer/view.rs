@@ -104,9 +104,9 @@ impl ToolView for TextAnalyzerView {
             ui,
             |ui| {
                 ui.vertical(|ui| {
-                    ui.label(ui::t(ui, "common.input"));
+                    ui.label(ui::t("common.input"));
                     input_changed =
-                        ui::fill_code(ui, "text-in", &mut self.input, ui::t(ui, "common.input"), true);
+                        ui::fill_code(ui, "text-in", &mut self.input, ui::t("common.input"), true);
                     let id = ui.id().with(egui::Id::new("text-in"));
                     if let Some(state) = egui::TextEdit::load_state(ui.ctx(), id) {
                         if let Some(range) = state.cursor.char_range() {
@@ -123,12 +123,16 @@ impl ToolView for TextAnalyzerView {
                     let s = &self.stats;
                     stat_row(ui, "选区行", &format!("{cursor_line}"));
                     stat_row(ui, "选区列", &format!("{cursor_col}"));
-                    stat_row(ui, ui::t(ui, "text_analyzer.bytes"), &format!("{}", s.bytes));
-                    stat_row(ui, ui::t(ui, "text_analyzer.characters"), &format!("{}", s.chars));
-                    stat_row(ui, ui::t(ui, "text_analyzer.words"), &format!("{}", s.words));
+                    stat_row(ui, ui::t("text_analyzer.bytes"), &format!("{}", s.bytes));
+                    stat_row(
+                        ui,
+                        ui::t("text_analyzer.characters"),
+                        &format!("{}", s.chars),
+                    );
+                    stat_row(ui, ui::t("text_analyzer.words"), &format!("{}", s.words));
                     stat_row(ui, "句", &format!("{}", s.sentences));
                     stat_row(ui, "段", &format!("{}", s.paragraphs));
-                    stat_row(ui, ui::t(ui, "text_analyzer.lines"), &format!("{}", s.lines));
+                    stat_row(ui, ui::t("text_analyzer.lines"), &format!("{}", s.lines));
                     stat_row(ui, "换行", s.eol.as_str());
                     ui.add_space(8.0);
                     ui.label("词频");
@@ -175,14 +179,13 @@ mod tests {
     #[test]
     fn test_text_analyzer_i18n_keys() {
         let keys = [
-            ("text_analyzer.characters", "字符数", "Characters"),
-            ("text_analyzer.words", "词数", "Words"),
-            ("text_analyzer.lines", "行数", "Lines"),
-            ("text_analyzer.bytes", "字节数", "Bytes"),
+            ("text_analyzer.characters", "字符数"),
+            ("text_analyzer.words", "词数"),
+            ("text_analyzer.lines", "行数"),
+            ("text_analyzer.bytes", "字节数"),
         ];
-        for (key, zh, en) in keys {
-            assert_eq!(devtoys_api::t(key, devtoys_api::Language::ZhCn), zh);
-            assert_eq!(devtoys_api::t(key, devtoys_api::Language::EnUs), en);
+        for (key, zh) in keys {
+            assert_eq!(devtoys_api::t(key), zh);
         }
     }
 }

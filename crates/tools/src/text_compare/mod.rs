@@ -37,10 +37,6 @@ impl Tool for TextCompareTool {
         metadata()
     }
 
-    fn supports_compact_overlay(&self) -> bool {
-        false
-    }
-
     #[cfg(feature = "gui")]
     fn create_view(&self) -> Option<ToolHandle> {
         Some(open_view())
@@ -60,7 +56,6 @@ mod tests {
     fn text_compare_tool_implements_tool() {
         let tool = TextCompareTool;
         assert_eq!(tool.metadata().id.as_str(), ID);
-        assert!(tool.cli().is_none());
         assert!(tool.detectors().is_empty());
         #[cfg(feature = "gui")]
         assert!(tool.create_view().is_some());

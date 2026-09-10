@@ -69,16 +69,16 @@ impl ToolView for UuidGenView {
                 }
             }
             dirty |= ui
-                .checkbox(&mut self.hyphens, ui::t(ui, "uuid.hyphens"))
+                .checkbox(&mut self.hyphens, ui::t("uuid.hyphens"))
                 .changed();
             dirty |= ui
-                .checkbox(&mut self.uppercase, ui::t(ui, "uuid.uppercase"))
+                .checkbox(&mut self.uppercase, ui::t("uuid.uppercase"))
                 .changed();
-            ui.label(ui::t(ui, "uuid.count"));
+            ui.label(ui::t("uuid.count"));
             ui.allocate_ui(egui::vec2(72.0, ui.spacing().interact_size.y), |ui| {
                 dirty |= ui::singleline(ui, "uuid-count", &mut self.count, "数量");
             });
-            if ui.button(ui::t(ui, "password.generate")).clicked() {
+            if ui.button(ui::t("password.generate")).clicked() {
                 dirty = true;
             }
             ui::copy_button(ui, self.error.is_none().then_some(self.output.as_str()));
@@ -89,7 +89,7 @@ impl ToolView for UuidGenView {
         ui::error_label(ui, self.error.as_deref());
         ui::labeled_code(
             ui,
-            ui::t(ui, "common.output"),
+            ui::t("common.output"),
             "uuid-out",
             &mut self.output,
             "生成结果",

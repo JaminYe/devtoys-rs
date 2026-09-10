@@ -56,20 +56,26 @@ impl ToolView for JsonPathView {
                 |ui| {
                     json_changed = ui::labeled_code(
                         ui,
-                        ui::t(ui, "common.input"),
+                        ui::t("common.input"),
                         "jsonpath-json",
                         &mut self.json,
-                        ui::t(ui, "common.paste"),
+                        ui::t("common.paste"),
                         true,
                     );
                 },
                 |ui| {
                     ui.vertical(|ui| {
-                        ui.label(ui::t(ui, "jsonpath.expression"));
+                        ui.label(ui::t("jsonpath.expression"));
                         path_changed =
                             ui::singleline(ui, "jsonpath-path", &mut self.path, "$.path");
-                        ui.label(ui::t(ui, "common.output"));
-                        ui::fill_code(ui, "jsonpath-out", &mut self.output, ui::t(ui, "common.output"), false);
+                        ui.label(ui::t("common.output"));
+                        ui::fill_code(
+                            ui,
+                            "jsonpath-out",
+                            &mut self.output,
+                            ui::t("common.output"),
+                            false,
+                        );
                     });
                 },
             );
@@ -111,13 +117,6 @@ mod tests {
 
     #[test]
     fn test_i18n_keys() {
-        assert_eq!(
-            devtoys_api::t("jsonpath.expression", devtoys_api::Language::ZhCn),
-            "JSONPath 表达式"
-        );
-        assert_eq!(
-            devtoys_api::t("jsonpath.expression", devtoys_api::Language::EnUs),
-            "JSONPath expression"
-        );
+        assert_eq!(devtoys_api::t("jsonpath.expression"), "JSONPath 表达式");
     }
 }

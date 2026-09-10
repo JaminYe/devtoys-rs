@@ -53,8 +53,8 @@ impl ToolView for JsonYamlView {
     fn ui(&mut self, ui: &mut egui::Ui) {
         ui.horizontal_wrapped(|ui| {
             for (label, value) in [
-                (ui::t(ui, "json_yaml.json_to_yaml"), Conversion::JsonToYaml),
-                (ui::t(ui, "json_yaml.yaml_to_json"), Conversion::YamlToJson),
+                (ui::t("json_yaml.json_to_yaml"), Conversion::JsonToYaml),
+                (ui::t("json_yaml.yaml_to_json"), Conversion::YamlToJson),
             ] {
                 if ui::toggle(ui, self.direction == value, label).clicked() {
                     self.direction = value;
@@ -64,14 +64,14 @@ impl ToolView for JsonYamlView {
             }
             let indent_choices: &[(&str, Indentation)] = match self.direction {
                 Conversion::JsonToYaml => &[
-                    (ui::t(ui, "common.two_spaces"), Indentation::TwoSpaces),
-                    (ui::t(ui, "common.four_spaces"), Indentation::FourSpaces),
+                    (ui::t("common.two_spaces"), Indentation::TwoSpaces),
+                    (ui::t("common.four_spaces"), Indentation::FourSpaces),
                 ],
                 Conversion::YamlToJson => &[
-                    (ui::t(ui, "common.two_spaces"), Indentation::TwoSpaces),
-                    (ui::t(ui, "common.four_spaces"), Indentation::FourSpaces),
-                    (ui::t(ui, "common.one_tab"), Indentation::OneTab),
-                    (ui::t(ui, "common.minified"), Indentation::Minified),
+                    (ui::t("common.two_spaces"), Indentation::TwoSpaces),
+                    (ui::t("common.four_spaces"), Indentation::FourSpaces),
+                    (ui::t("common.one_tab"), Indentation::OneTab),
+                    (ui::t("common.minified"), Indentation::Minified),
                 ],
             };
             for (label, value) in indent_choices {
@@ -89,7 +89,7 @@ impl ToolView for JsonYamlView {
             |ui| {
                 input_changed = ui::labeled_code(
                     ui,
-                    ui::t(ui, "common.input"),
+                    ui::t("common.input"),
                     "json-yaml-in",
                     &mut self.input,
                     "粘贴 JSON 或 YAML",
@@ -99,7 +99,7 @@ impl ToolView for JsonYamlView {
             |ui| {
                 ui::labeled_code(
                     ui,
-                    ui::t(ui, "common.output"),
+                    ui::t("common.output"),
                     "json-yaml-out",
                     &mut self.output,
                     "转换结果",

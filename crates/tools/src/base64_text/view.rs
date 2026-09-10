@@ -53,8 +53,8 @@ impl ToolView for Base64TextView {
     fn ui(&mut self, ui: &mut egui::Ui) {
         ui.horizontal_wrapped(|ui| {
             for (label, value) in [
-                (ui::t(ui, "base64_text.encode"), Conversion::Encode),
-                (ui::t(ui, "base64_text.decode"), Conversion::Decode),
+                (ui::t("base64_text.encode"), Conversion::Encode),
+                (ui::t("base64_text.decode"), Conversion::Decode),
             ] {
                 if ui::toggle(ui, self.conversion == value, label).clicked() {
                     self.conversion = value;
@@ -67,14 +67,17 @@ impl ToolView for Base64TextView {
                     self.reconvert();
                 }
             }
-            if ui.checkbox(&mut self.multiline, ui::t(ui, "base64_text.multiline")).changed() {
+            if ui
+                .checkbox(&mut self.multiline, ui::t("base64_text.multiline"))
+                .changed()
+            {
                 self.reconvert();
             }
             ui::copy_button(ui, self.error.is_none().then_some(self.output.as_str()));
         });
         let err_text = self.error.as_deref().map(|e| match e {
-            "非法 Base64" => ui::t(ui, "base64_text.invalid"),
-            "非 ASCII 文本" => ui::t(ui, "base64_text.not_ascii"),
+            "非法 Base64" => ui::t("base64_text.invalid"),
+            "非 ASCII 文本" => ui::t("base64_text.not_ascii"),
             _ => e,
         });
         ui::error_label(ui, err_text);
@@ -84,7 +87,7 @@ impl ToolView for Base64TextView {
             |ui| {
                 input_changed = ui::labeled_code(
                     ui,
-                    ui::t(ui, "common.input"),
+                    ui::t("common.input"),
                     "b64-in",
                     &mut self.input,
                     "粘贴文本或 Base64",
@@ -94,7 +97,7 @@ impl ToolView for Base64TextView {
             |ui| {
                 ui::labeled_code(
                     ui,
-                    ui::t(ui, "common.output"),
+                    ui::t("common.output"),
                     "b64-out",
                     &mut self.output,
                     "转换结果",
@@ -241,26 +244,21 @@ mod tests {
             view.ui(ui);
         });
         out_zh.textures_delta.clear();
-        let zh_texts: Vec<String> = out_zh.shapes.iter().filter_map(|s| match &s.shape {
-            egui::Shape::Text(t) => Some(t.galley.text().to_string()),
-            _ => None,
-        }).collect();
-        assert!(zh_texts.iter().any(|t| t == "多行"), "ZhCn should contain '多行'");
-        assert!(zh_texts.iter().any(|t| t == "非法 Base64"), "ZhCn should contain '非法 Base64'");
-
-        // EnUs UI
-        let ctx_en = egui::Context::default();
-        ctx_en.data_mut(|d| {
-            d.insert_temp(egui::Id::new("app_language"), devtoys_api::Language::EnUs);
-        });
-        let mut out_en = ctx_en.run_ui(egui::RawInput::default(), |ui| {
-            view.ui(ui);
-        });
-        out_en.textures_delta.clear();
-        let en_texts: Vec<String> = out_en.shapes.iter().filter_map(|s| match &s.shape {
-            egui::Shape::Text(t) => Some(t.galley.text().to_string()),
-            _ => None,
-        }).collect();
-        assert!(en_texts.iter().any(|t| t == "Invalid Base64"), "EnUs should contain 'Invalid Base64'");
+        let zh_texts: Vec<String> = out_zh
+            .shapes
+            .iter()
+            .filter_map(|s| match &s.shape {
+                egui::Shape::Text(t) => Some(t.galley.text().to_string()),
+                _ => None,
+            })
+            .collect();
+        assert!(
+            zh_texts.iter().any(|t| t == "多行"),
+            "ZhCn should contain '多行'"
+        );
+        assert!(
+            zh_texts.iter().any(|t| t == "非法 Base64"),
+            "ZhCn should contain '非法 Base64'"
+        );
     }
 }

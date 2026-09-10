@@ -62,7 +62,7 @@ impl ToolView for CronParserView {
     fn ui(&mut self, ui: &mut egui::Ui) {
         ui.horizontal_wrapped(|ui| {
             if ui
-                .checkbox(&mut self.include_seconds, ui::t(ui, "cron.include_seconds"))
+                .checkbox(&mut self.include_seconds, ui::t("cron.include_seconds"))
                 .changed()
             {
                 if self.include_seconds {
@@ -96,13 +96,13 @@ impl ToolView for CronParserView {
         });
         let err_text = self.error.as_deref().map(|e| {
             if e == "非法 Cron 表达式" {
-                ui::t(ui, "cron.invalid_expression")
+                ui::t("cron.invalid_expression")
             } else {
                 e
             }
         });
         ui::error_label(ui, err_text);
-        ui.label(ui::t(ui, "cron.expression"));
+        ui.label(ui::t("cron.expression"));
         if ui::singleline(
             ui,
             "cron-expr",
@@ -111,7 +111,7 @@ impl ToolView for CronParserView {
         ) {
             self.reparse();
         }
-        ui.label(ui::t(ui, "common.output"));
+        ui.label(ui::t("common.output"));
         ui::fill_code(ui, "cron-out", &mut self.output, "解析结果", false);
     }
 

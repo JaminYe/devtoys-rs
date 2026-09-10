@@ -50,10 +50,10 @@ impl ToolView for ListCompareView {
     fn ui(&mut self, ui: &mut egui::Ui) {
         ui.horizontal_wrapped(|ui| {
             for (label, value) in [
-                (ui::t(ui, "list_compare.intersection"), ListMode::AInterB),
+                (ui::t("list_compare.intersection"), ListMode::AInterB),
                 ("并集", ListMode::AUnionB),
-                (ui::t(ui, "list_compare.difference_a"), ListMode::AOnly),
-                (ui::t(ui, "list_compare.difference_b"), ListMode::BOnly),
+                (ui::t("list_compare.difference_a"), ListMode::AOnly),
+                (ui::t("list_compare.difference_b"), ListMode::BOnly),
             ] {
                 if ui::toggle(ui, self.mode == value, label).clicked() {
                     self.set_mode(value);
@@ -81,10 +81,10 @@ impl ToolView for ListCompareView {
             ui.allocate_ui(egui::vec2(w, total.y), |ui| {
                 if ui::labeled_code(
                     ui,
-                    ui::t(ui, "list_compare.list_a"),
+                    ui::t("list_compare.list_a"),
                     "list-a",
                     &mut self.list_a,
-                    ui::t(ui, "list_compare.list_a"),
+                    ui::t("list_compare.list_a"),
                     true,
                 ) {
                     self.recompute();
@@ -94,10 +94,10 @@ impl ToolView for ListCompareView {
             ui.allocate_ui(egui::vec2(w, total.y), |ui| {
                 if ui::labeled_code(
                     ui,
-                    ui::t(ui, "list_compare.list_b"),
+                    ui::t("list_compare.list_b"),
                     "list-b",
                     &mut self.list_b,
-                    ui::t(ui, "list_compare.list_b"),
+                    ui::t("list_compare.list_b"),
                     true,
                 ) {
                     self.recompute();
@@ -107,10 +107,10 @@ impl ToolView for ListCompareView {
             ui.allocate_ui(egui::vec2(w, total.y), |ui| {
                 ui::labeled_code(
                     ui,
-                    ui::t(ui, "common.output"),
+                    ui::t("common.output"),
                     "list-out",
                     &mut self.output,
-                    ui::t(ui, "common.output"),
+                    ui::t("common.output"),
                     false,
                 );
             });
@@ -223,27 +223,14 @@ mod tests {
     #[test]
     fn test_list_compare_i18n_keys() {
         let keys = [
-            ("list_compare.list_a", "列表 A", "List A"),
-            ("list_compare.list_b", "列表 B", "List B"),
-            (
-                "list_compare.intersection",
-                "交集 (A ∩ B)",
-                "Intersection (A ∩ B)",
-            ),
-            (
-                "list_compare.difference_a",
-                "A 独有 (A - B)",
-                "Only in A (A - B)",
-            ),
-            (
-                "list_compare.difference_b",
-                "B 独有 (B - A)",
-                "Only in B (B - A)",
-            ),
+            ("list_compare.list_a", "列表 A"),
+            ("list_compare.list_b", "列表 B"),
+            ("list_compare.intersection", "交集 (A ∩ B)"),
+            ("list_compare.difference_a", "A 独有 (A - B)"),
+            ("list_compare.difference_b", "B 独有 (B - A)"),
         ];
-        for (key, zh, en) in keys {
-            assert_eq!(devtoys_api::t(key, devtoys_api::Language::ZhCn), zh);
-            assert_eq!(devtoys_api::t(key, devtoys_api::Language::EnUs), en);
+        for (key, zh) in keys {
+            assert_eq!(devtoys_api::t(key), zh);
         }
     }
 }

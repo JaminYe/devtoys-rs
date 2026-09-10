@@ -1,4 +1,3 @@
-use devtoys_api::LanguagePreference;
 use std::fs;
 
 use devtoys_api::{AppSettings, ThemePreference, WindowState};
@@ -28,7 +27,6 @@ fn round_trips_all_settings_fields() {
     );
     let settings = AppSettings {
         theme: ThemePreference::Dark,
-        language: LanguagePreference::EnUs,
         smart_detection_enabled: false,
         smart_detection_paste: false,
         favorites: vec!["JsonFormatter".into(), "TextTool".into()],
@@ -228,16 +226,36 @@ fn failed_write_does_not_corrupt_previous_file() {
 }
 
 #[test]
-fn language_preference_persists_and_loads() {
-    let dir = tempfile::tempdir().unwrap();
-    let store = SettingsStore::in_dir(dir.path());
-    let mut settings = AppSettings::default();
-    assert_eq!(settings.language, LanguagePreference::System);
-    settings.language = LanguagePreference::ZhCn;
-    store.save(&settings).unwrap();
-    assert_eq!(store.load().language, LanguagePreference::ZhCn);
+fn legacy_language_setting_loads_and_saves_without_language_key() {
+    for lang_val in [
+        "\"en_us\"",
+        "\"en-US\"",
+        "\"system\"",
+        "\"zh_cn\"",
+        "\"zh-CN\"",
+    ] {
+        let dir = tempfile::tempdir().unwrap();
+        let store = SettingsStore::in_dir(dir.path());
+        let legacy_json = format!(
+            r#"{{
+            "theme": "dark",
+            "language": {lang_val},
+            "smart_detection_enabled": false,
+            "smart_detection_paste": false,
+            "favorites": ["JsonFormatter"]
+        }}"#
+        );
+        fs::write(store.path(), legacy_json).unwrap();
+        let loaded = store.load();
+        assert_eq!(loaded.theme, ThemePreference::Dark);
+        assert_eq!(loaded.favorites, ["JsonFormatter"]);
 
-    settings.language = LanguagePreference::EnUs;
-    store.save(&settings).unwrap();
-    assert_eq!(store.load().language, LanguagePreference::EnUs);
+        // Saving the loaded settings writes back without the language key
+        store.save(&loaded).unwrap();
+        let re_read = fs::read_to_string(store.path()).unwrap();
+        assert!(
+            !re_read.contains("language"),
+            "Saved settings should not contain language key: {re_read}"
+        );
+    }
 }

@@ -1,5 +1,0 @@
-id = "EchoUpper"
-display_name = "Echo Upper"
-group = "Text"
-search_keywords = ["echo", "uppercase", "extension"]
-cli = "EchoUpper"

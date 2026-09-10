@@ -243,7 +243,7 @@ impl ImageConverterView {
 impl ToolView for ImageConverterView {
     fn ui(&mut self, ui: &mut egui::Ui) {
         ui.horizontal_wrapped(|ui| {
-            ui.label(ui::t(ui, "image_converter.target_format"));
+            ui.label(ui::t("image_converter.target_format"));
             for (label, value) in [
                 ("BMP", ImageTargetFormat::Bmp),
                 ("JPEG", ImageTargetFormat::Jpeg),
@@ -260,10 +260,7 @@ impl ToolView for ImageConverterView {
             }
         });
         ui.horizontal(|ui| {
-            if ui
-                .button(ui::t(ui, "image_converter.select_file"))
-                .clicked()
-            {
+            if ui.button(ui::t("image_converter.select_file")).clicked() {
                 self.pick_files();
             }
             let can_save = !self.batch.successes.is_empty();
@@ -283,7 +280,7 @@ impl ToolView for ImageConverterView {
             |ui| {
                 changed = ui::labeled_code(
                     ui,
-                    ui::t(ui, "common.input"),
+                    ui::t("common.input"),
                     "img-path",
                     &mut self.path,
                     "图像文件路径（每行一个）",
@@ -657,13 +654,12 @@ mod tests {
     #[test]
     fn test_image_converter_i18n_keys() {
         let keys = [
-            ("image_converter.title", "图片格式转换器", "Image Converter"),
-            ("image_converter.target_format", "目标格式", "Target format"),
-            ("image_converter.select_file", "选择图片", "Select image"),
+            ("image_converter.title", "图片格式转换器"),
+            ("image_converter.target_format", "目标格式"),
+            ("image_converter.select_file", "选择图片"),
         ];
-        for (key, zh, en) in keys {
-            assert_eq!(devtoys_api::t(key, devtoys_api::Language::ZhCn), zh);
-            assert_eq!(devtoys_api::t(key, devtoys_api::Language::EnUs), en);
+        for (key, zh) in keys {
+            assert_eq!(devtoys_api::t(key), zh);
         }
     }
 }

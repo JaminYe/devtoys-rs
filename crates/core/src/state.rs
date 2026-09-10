@@ -1,4 +1,3 @@
-use devtoys_api::LanguagePreference;
 use devtoys_api::{AppSettings, ThemePreference, ToolMetadata};
 
 use crate::{CoreError, SettingsStore, ToolRegistry};
@@ -68,11 +67,6 @@ impl AppState {
         self.settings.theme = theme;
         self.persist()
     }
-    pub fn set_language(&mut self, language: LanguagePreference) -> Result<(), CoreError> {
-        self.settings.language = language;
-        self.persist()
-    }
-
 
     pub fn set_smart_detection_enabled(&mut self, enabled: bool) -> Result<(), CoreError> {
         self.settings.smart_detection_enabled = enabled;

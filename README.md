@@ -5,9 +5,8 @@
 ## ✨ 特性
 
 - 🖥️ **原生跨平台 GUI** — 基于 egui / eframe 立即模式渲染（Windows / macOS / Linux）
-- ⌨️ **CLI 支持** — 所有工具能力均可通过 `devtoys-cli` 命令行调用
+- 🇨🇳 **简体中文界面** — 原生固定简体中文，专注简中开发者桌面体验
 - 🔍 **智能识别** — 粘贴文本自动检测数据类型并推荐工具
-- 🧩 **插件化架构** — 工具以模块化方式注册，易于扩展
 - 🌙 **主题支持** — 浅色 / 深色主题跟随系统或手动切换
 
 ## 🧰 内置工具
@@ -32,9 +31,6 @@ cd devtoys-rs
 
 # 构建 GUI 版本
 cargo build --release -p devtoys
-
-# 构建 CLI 版本
-cargo build --release -p devtoys-cli
 ```
 
 > Linux 需要安装 egui 相关依赖：libxkbcommon、libwayland 等，详见 [.github/workflows/build.yml](.github/workflows/build.yml)
@@ -57,8 +53,7 @@ crates/
 ├── api/      # 公共类型：工具元数据、分组、设置、Detector trait
 ├── core/     # 核心逻辑：注册表、检测器调度、设置存储
 ├── tools/    # 全部业务工具实现
-├── host/     # egui 桌面宿主：窗口、侧栏、设置界面
-└── cli/      # 命令行入口
+└── host/     # egui 桌面宿主：窗口、侧栏、设置界面
 ```
 
 ## 📄 License

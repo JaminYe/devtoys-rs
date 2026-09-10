@@ -42,14 +42,16 @@ Name: "chinesesimplified"; MessagesFile: "compiler:Languages\ChineseSimplified.i
 [Tasks]
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"
 
+[InstallDelete]
+Type: files; Name: "{app}\devtoys-cli.exe"
+Type: files; Name: "{group}\{#MyAppName} CLI.lnk"
+
 [Files]
 Source: "..\..\target\{#Target}\release\devtoys.exe"; DestDir: "{app}"; Flags: ignoreversion
-Source: "..\..\target\{#Target}\release\devtoys-cli.exe"; DestDir: "{app}"; Flags: ignoreversion
 Source: "..\..\crates\host\assets\icon.ico"; DestDir: "{app}"; Flags: ignoreversion
 
 [Icons]
 Name: "{group}\{#MyAppName}"; Filename: "{app}\devtoys.exe"
-Name: "{group}\{#MyAppName} CLI"; Filename: "cmd.exe"; Parameters: "/K ""{app}\devtoys-cli.exe"" --help"; IconFilename: "{app}\devtoys.exe"
 Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\devtoys.exe"; Tasks: desktopicon
 
 [Run]

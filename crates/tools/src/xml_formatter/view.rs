@@ -50,10 +50,10 @@ impl ToolView for XmlFormatterView {
     fn ui(&mut self, ui: &mut egui::Ui) {
         ui.horizontal_wrapped(|ui| {
             for (label, value) in [
-                (ui::t(ui, "common.two_spaces"), Indentation::TwoSpaces),
-                (ui::t(ui, "common.four_spaces"), Indentation::FourSpaces),
-                (ui::t(ui, "common.one_tab"), Indentation::OneTab),
-                (ui::t(ui, "common.minified"), Indentation::Minified),
+                (ui::t("common.two_spaces"), Indentation::TwoSpaces),
+                (ui::t("common.four_spaces"), Indentation::FourSpaces),
+                (ui::t("common.one_tab"), Indentation::OneTab),
+                (ui::t("common.minified"), Indentation::Minified),
             ] {
                 if ui::toggle(ui, self.indent == value, label).clicked() {
                     self.indent = value;
@@ -63,7 +63,7 @@ impl ToolView for XmlFormatterView {
             if ui
                 .checkbox(
                     &mut self.new_line_on_attributes,
-                    ui::t(ui, "xml.attributes_on_new_lines"),
+                    ui::t("xml.attributes_on_new_lines"),
                 )
                 .changed()
             {
@@ -78,7 +78,7 @@ impl ToolView for XmlFormatterView {
             |ui| {
                 input_changed = ui::labeled_code_editor(
                     ui,
-                    ui::t(ui, "common.input"),
+                    ui::t("common.input"),
                     "xml-in",
                     &mut self.input,
                     "粘贴 XML",
@@ -89,7 +89,7 @@ impl ToolView for XmlFormatterView {
             |ui| {
                 ui::labeled_code_editor(
                     ui,
-                    ui::t(ui, "common.output"),
+                    ui::t("common.output"),
                     "xml-out",
                     &mut self.output,
                     "格式化结果",

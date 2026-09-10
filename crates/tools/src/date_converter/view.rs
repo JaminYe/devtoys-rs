@@ -190,10 +190,10 @@ impl DateConverterView {
 impl ToolView for DateConverterView {
     fn ui(&mut self, ui: &mut egui::Ui) {
         ui.horizontal_wrapped(|ui| {
-            ui.label(ui::t(ui, "date.format"));
+            ui.label(ui::t("date.format"));
             for (label, value) in [
                 ("Ticks", TimestampFormat::Ticks),
-                (ui::t(ui, "date.second"), TimestampFormat::Seconds),
+                (ui::t("date.second"), TimestampFormat::Seconds),
                 ("毫秒", TimestampFormat::Milliseconds),
             ] {
                 if ui::toggle(ui, self.format == value, label).clicked() {
@@ -201,18 +201,18 @@ impl ToolView for DateConverterView {
                 }
             }
             if ui
-                .checkbox(&mut self.custom_epoch, ui::t(ui, "date.custom_epoch"))
+                .checkbox(&mut self.custom_epoch, ui::t("date.custom_epoch"))
                 .changed()
             {
                 self.sync_from_timestamp();
             }
-            if ui.button(ui::t(ui, "date.now")).clicked() {
+            if ui.button(ui::t("date.now")).clicked() {
                 self.apply_now(Utc::now());
             }
             ui::copy_button(ui, self.error.is_none().then_some(self.datetime.as_str()));
         });
         ui.horizontal(|ui| {
-            ui.label(ui::t(ui, "date.timezone"));
+            ui.label(ui::t("date.timezone"));
             let mut tz_changed = false;
             let tz_display = self.timezone_display().to_string();
             egui::ComboBox::from_id_salt("date-tz-combo")
@@ -246,7 +246,7 @@ impl ToolView for DateConverterView {
                 self.sync_from_timestamp();
             }
             if self.custom_epoch {
-                ui.label(ui::t(ui, "date.custom_epoch"));
+                ui.label(ui::t("date.custom_epoch"));
                 if ui
                     .add(
                         egui::TextEdit::singleline(&mut self.epoch)
@@ -265,7 +265,7 @@ impl ToolView for DateConverterView {
         }
         let err_text = self.error.as_deref().map(|e| {
             if e == "非法日期或时间戳" {
-                ui::t(ui, "date.invalid")
+                ui::t("date.invalid")
             } else {
                 e
             }
@@ -280,22 +280,58 @@ impl ToolView for DateConverterView {
             self.sync_from_datetime();
         }
         ui.horizontal(|ui| {
-            if labeled_part(ui, ui::t(ui, "date.year"), "date-year", &mut self.parts.year, 1..=9999) {
+            if labeled_part(
+                ui,
+                ui::t("date.year"),
+                "date-year",
+                &mut self.parts.year,
+                1..=9999,
+            ) {
                 self.sync_from_parts();
             }
-            if labeled_part(ui, ui::t(ui, "date.month"), "date-month", &mut self.parts.month, 1..=12) {
+            if labeled_part(
+                ui,
+                ui::t("date.month"),
+                "date-month",
+                &mut self.parts.month,
+                1..=12,
+            ) {
                 self.sync_from_parts();
             }
-            if labeled_part(ui, ui::t(ui, "date.day"), "date-day", &mut self.parts.day, 1..=31) {
+            if labeled_part(
+                ui,
+                ui::t("date.day"),
+                "date-day",
+                &mut self.parts.day,
+                1..=31,
+            ) {
                 self.sync_from_parts();
             }
-            if labeled_part(ui, ui::t(ui, "date.hour"), "date-hour", &mut self.parts.hour, 0..=23) {
+            if labeled_part(
+                ui,
+                ui::t("date.hour"),
+                "date-hour",
+                &mut self.parts.hour,
+                0..=23,
+            ) {
                 self.sync_from_parts();
             }
-            if labeled_part(ui, ui::t(ui, "date.minute"), "date-minute", &mut self.parts.minute, 0..=59) {
+            if labeled_part(
+                ui,
+                ui::t("date.minute"),
+                "date-minute",
+                &mut self.parts.minute,
+                0..=59,
+            ) {
                 self.sync_from_parts();
             }
-            if labeled_part(ui, ui::t(ui, "date.second"), "date-second", &mut self.parts.second, 0..=59) {
+            if labeled_part(
+                ui,
+                ui::t("date.second"),
+                "date-second",
+                &mut self.parts.second,
+                0..=59,
+            ) {
                 self.sync_from_parts();
             }
         });
@@ -474,7 +510,7 @@ mod tests {
     }
 
     #[test]
-    fn i18n_keys_have_both_translations_and_error_switches() {
+    fn chinese_i18n_keys_produce_valid_text() {
         let keys = [
             "cron.expression",
             "cron.include_seconds",
@@ -514,19 +550,12 @@ mod tests {
             "common.minified",
         ];
         for k in keys {
-            let zh = devtoys_api::t(k, devtoys_api::Language::ZhCn);
-            let en = devtoys_api::t(k, devtoys_api::Language::EnUs);
-            assert!(!zh.is_empty(), "key {k} has empty zh");
-            assert!(!en.is_empty(), "key {k} has empty en");
-            assert_ne!(zh, k, "key {k} missing zh translation");
-            assert_ne!(en, k, "key {k} missing en translation");
-            assert_ne!(zh, en, "key {k} zh and en should differ");
+            let zh = devtoys_api::t(k);
+            assert!(!zh.is_empty(), "key {k} has empty translation");
+            assert_ne!(zh, k, "key {k} missing translation");
         }
 
-        let zh_err = devtoys_api::t("date.invalid", devtoys_api::Language::ZhCn);
-        let en_err = devtoys_api::t("date.invalid", devtoys_api::Language::EnUs);
+        let zh_err = devtoys_api::t("date.invalid");
         assert_eq!(zh_err, "无效的日期或时间戳");
-        assert_eq!(en_err, "Invalid date or timestamp");
-        assert_ne!(zh_err, en_err);
     }
 }

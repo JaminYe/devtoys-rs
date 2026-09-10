@@ -1,5 +1,3 @@
-mod cli;
-mod extension;
 mod indent;
 #[cfg(feature = "gui")]
 mod slot;
@@ -31,11 +29,6 @@ mod url;
 mod uuid_gen;
 mod xml_formatter;
 pub use catalog::{default_catalog, Tool, ToolCatalog};
-pub use cli::{build_cli, build_cli_from, run_cli, run_cli_from, CliError, CliTool};
-pub use extension::{
-    catalog_with_extensions_dir, default_extensions_dir, load_extensions, ExtensionLoadError,
-    ExtensionLoadResult,
-};
 
 use devtoys_api::{Detector, ToolMetadata};
 
@@ -70,10 +63,6 @@ pub use slot::{ToolHandle, ToolView};
 
 pub fn all_tools() -> Vec<ToolMetadata> {
     default_catalog().all_metadata()
-}
-
-pub fn all_cli_tools() -> Vec<CliTool> {
-    default_catalog().all_cli()
 }
 
 pub fn tool_detectors() -> Vec<Box<dyn Detector>> {

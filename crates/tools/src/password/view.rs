@@ -70,18 +70,18 @@ impl ToolView for PasswordView {
         let mut dirty = false;
         ui.horizontal_wrapped(|ui| {
             dirty |= ui
-                .checkbox(&mut self.uppercase, ui::t(ui, "password.uppercase"))
+                .checkbox(&mut self.uppercase, ui::t("password.uppercase"))
                 .changed();
             dirty |= ui
-                .checkbox(&mut self.lowercase, ui::t(ui, "password.lowercase"))
+                .checkbox(&mut self.lowercase, ui::t("password.lowercase"))
                 .changed();
             dirty |= ui
-                .checkbox(&mut self.digits, ui::t(ui, "password.digits"))
+                .checkbox(&mut self.digits, ui::t("password.digits"))
                 .changed();
             dirty |= ui
-                .checkbox(&mut self.special, ui::t(ui, "password.special"))
+                .checkbox(&mut self.special, ui::t("password.special"))
                 .changed();
-            ui.label(ui::t(ui, "password.length"));
+            ui.label(ui::t("password.length"));
             ui.allocate_ui(egui::vec2(72.0, ui.spacing().interact_size.y), |ui| {
                 dirty |= ui::singleline(ui, "pwd-len", &mut self.length, "长度");
             });
@@ -89,7 +89,7 @@ impl ToolView for PasswordView {
             ui.allocate_ui(egui::vec2(72.0, ui.spacing().interact_size.y), |ui| {
                 dirty |= ui::singleline(ui, "pwd-count", &mut self.count, "数量");
             });
-            if ui.button(ui::t(ui, "password.generate")).clicked() {
+            if ui.button(ui::t("password.generate")).clicked() {
                 dirty = true;
             }
             ui::copy_button(ui, self.error.is_none().then_some(self.output.as_str()));
@@ -102,7 +102,7 @@ impl ToolView for PasswordView {
         ui::error_label(ui, self.error.as_deref());
         ui::labeled_code(
             ui,
-            ui::t(ui, "common.output"),
+            ui::t("common.output"),
             "pwd-out",
             &mut self.output,
             "生成结果",

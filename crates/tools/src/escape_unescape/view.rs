@@ -41,8 +41,8 @@ impl ToolView for EscapeUnescapeView {
     fn ui(&mut self, ui: &mut egui::Ui) {
         ui.horizontal_wrapped(|ui| {
             for (label, value) in [
-                (ui::t(ui, "escape.escape"), Conversion::Encode),
-                (ui::t(ui, "escape.unescape"), Conversion::Decode),
+                (ui::t("escape.escape"), Conversion::Encode),
+                (ui::t("escape.unescape"), Conversion::Decode),
             ] {
                 if ui::toggle(ui, self.conversion == value, label).clicked() {
                     self.conversion = value;
@@ -58,20 +58,20 @@ impl ToolView for EscapeUnescapeView {
             |ui| {
                 input_changed = ui::labeled_code(
                     ui,
-                    ui::t(ui, "common.input"),
+                    ui::t("common.input"),
                     "escape-in",
                     &mut self.input,
-                    ui::t(ui, "common.paste"),
+                    ui::t("common.paste"),
                     true,
                 );
             },
             |ui| {
                 ui::labeled_code(
                     ui,
-                    ui::t(ui, "common.output"),
+                    ui::t("common.output"),
                     "escape-out",
                     &mut self.output,
-                    ui::t(ui, "common.output"),
+                    ui::t("common.output"),
                     false,
                 );
             },
@@ -162,22 +162,8 @@ mod tests {
 
     #[test]
     fn test_escape_i18n_keys() {
-        assert_eq!(
-            devtoys_api::t("escape.escape", devtoys_api::Language::ZhCn),
-            "转义"
-        );
-        assert_eq!(
-            devtoys_api::t("escape.escape", devtoys_api::Language::EnUs),
-            "Escape"
-        );
-        assert_eq!(
-            devtoys_api::t("escape.unescape", devtoys_api::Language::ZhCn),
-            "反转义"
-        );
-        assert_eq!(
-            devtoys_api::t("escape.unescape", devtoys_api::Language::EnUs),
-            "Unescape"
-        );
+        assert_eq!(devtoys_api::t("escape.escape"), "转义");
+        assert_eq!(devtoys_api::t("escape.unescape"), "反转义");
     }
 
     #[test]

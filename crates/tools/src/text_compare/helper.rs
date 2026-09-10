@@ -509,12 +509,10 @@ mod tests {
         assert!(hunks
             .iter()
             .all(|h| h.spans.iter().all(|s| s.tag == DiffTag::Equal)));
-        assert!(hunks
+        assert!(hunks.iter().all(|h| !h
+            .spans
             .iter()
-            .all(|h| !h.spans.iter().any(|s| matches!(
-                s.tag,
-                DiffTag::Delete | DiffTag::Insert
-            ))));
+            .any(|s| matches!(s.tag, DiffTag::Delete | DiffTag::Insert))));
     }
 
     #[test]
@@ -564,17 +562,11 @@ mod tests {
         let right_line = rows[0].right.as_ref().unwrap();
         assert_eq!(
             span_pairs(&left_line.spans),
-            [
-                (DiffTag::Equal, "测试"),
-                (DiffTag::Delete, "文本"),
-            ]
+            [(DiffTag::Equal, "测试"), (DiffTag::Delete, "文本"),]
         );
         assert_eq!(
             span_pairs(&right_line.spans),
-            [
-                (DiffTag::Equal, "测试"),
-                (DiffTag::Insert, "样例"),
-            ]
+            [(DiffTag::Equal, "测试"), (DiffTag::Insert, "样例"),]
         );
         assert_eq!(concat_spans(&left_line.spans), "测试文本");
         assert_eq!(concat_spans(&right_line.spans), "测试样例");
@@ -617,20 +609,14 @@ mod tests {
                 (DiffTag::Equal, "d"),
             ]
         );
-        assert_eq!(
-            span_pairs(&r_del.spans),
-            [(DiffTag::Equal, "word")]
-        );
+        assert_eq!(span_pairs(&r_del.spans), [(DiffTag::Equal, "word")]);
 
         // Insertion inside word: "word" -> "world"
         let rows_ins = diff_rows("word", "world");
         assert_eq!(rows_ins.len(), 1);
         let l_ins = rows_ins[0].left.as_ref().unwrap();
         let r_ins = rows_ins[0].right.as_ref().unwrap();
-        assert_eq!(
-            span_pairs(&l_ins.spans),
-            [(DiffTag::Equal, "word")]
-        );
+        assert_eq!(span_pairs(&l_ins.spans), [(DiffTag::Equal, "word")]);
         assert_eq!(
             span_pairs(&r_ins.spans),
             [

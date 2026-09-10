@@ -1,5 +1,3 @@
-use crate::i18n::Language;
-
 /// Fixed business groups. Display names are Chinese and must stay in sync
 /// with `DevToys-需求说明.md`.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -50,25 +48,6 @@ impl GroupId {
             GroupId::Graphic => "图像处理",
             GroupId::Testers => "测试工具",
             GroupId::Text => "文本处理",
-        }
-    }
-
-    pub fn localized_name(self, lang: Language) -> &'static str {
-        match (self, lang) {
-            (GroupId::Converters, Language::ZhCn) => "转换器",
-            (GroupId::Converters, Language::EnUs) => "Converters",
-            (GroupId::EncodersDecoders, Language::ZhCn) => "编解码器",
-            (GroupId::EncodersDecoders, Language::EnUs) => "Encoders / Decoders",
-            (GroupId::Formatters, Language::ZhCn) => "格式化工具",
-            (GroupId::Formatters, Language::EnUs) => "Formatters",
-            (GroupId::Generators, Language::ZhCn) => "生成器",
-            (GroupId::Generators, Language::EnUs) => "Generators",
-            (GroupId::Graphic, Language::ZhCn) => "图像处理",
-            (GroupId::Graphic, Language::EnUs) => "Graphic",
-            (GroupId::Testers, Language::ZhCn) => "测试工具",
-            (GroupId::Testers, Language::EnUs) => "Testers",
-            (GroupId::Text, Language::ZhCn) => "文本处理",
-            (GroupId::Text, Language::EnUs) => "Text",
         }
     }
 }

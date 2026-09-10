@@ -207,7 +207,7 @@ impl ToolView for HashChecksumView {
                 }
             }
             hash_dirty |= ui
-                .checkbox(&mut self.uppercase, ui::t(ui, "hash.uppercase"))
+                .checkbox(&mut self.uppercase, ui::t("hash.uppercase"))
                 .changed();
             if ui.button("选择文件").clicked() {
                 hash_dirty |= self.pick_file();
@@ -218,7 +218,7 @@ impl ToolView for HashChecksumView {
             );
         });
         ui.columns(2, |cols| {
-            cols[0].label(ui::t(&cols[0], "hash.secret_key"));
+            cols[0].label(ui::t("hash.secret_key"));
             if ui::singleline(
                 &mut cols[0],
                 "hash-hmac",
@@ -283,7 +283,7 @@ impl ToolView for HashChecksumView {
             |ui| {
                 input_changed = ui::labeled_code(
                     ui,
-                    ui::t(ui, "common.input"),
+                    ui::t("common.input"),
                     "hash-in",
                     &mut self.input,
                     "输入文本或文件路径",
@@ -293,7 +293,7 @@ impl ToolView for HashChecksumView {
             |ui| {
                 ui::labeled_code(
                     ui,
-                    ui::t(ui, "common.output"),
+                    ui::t("common.output"),
                     "hash-out",
                     &mut self.output,
                     "哈希结果",

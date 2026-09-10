@@ -1,13 +1,10 @@
-mod cli;
 mod helper;
 #[cfg(feature = "gui")]
 mod view;
 
 use crate::catalog::Tool;
-use crate::cli::CliTool;
 #[cfg(feature = "gui")]
 use crate::slot::ToolHandle;
-pub use cli::cli_tool;
 use devtoys_api::{GroupId, ToolId, ToolMetadata, TYPE_FILE, TYPE_TEXT};
 pub use helper::{
     checksum_matches, checksum_matches_input, compute_hash, HashAlgorithm, HashError,
@@ -42,10 +39,6 @@ impl Tool for HashChecksumTool {
         metadata()
     }
 
-    fn cli(&self) -> Option<CliTool> {
-        Some(cli_tool())
-    }
-
     #[cfg(feature = "gui")]
     fn create_view(&self) -> Option<ToolHandle> {
         Some(open_view())
@@ -65,7 +58,6 @@ mod tests {
     fn hash_checksum_tool_implements_tool() {
         let tool = HashChecksumTool;
         assert_eq!(tool.metadata().id.as_str(), ID);
-        assert!(tool.cli().is_some());
         assert!(tool.detectors().is_empty());
         #[cfg(feature = "gui")]
         assert!(tool.create_view().is_some());

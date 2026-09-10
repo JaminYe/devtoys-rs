@@ -273,7 +273,7 @@ mod tests {
     }
 
     #[test]
-    fn metadata_and_cli_match_spec() {
+    fn metadata_matches_spec() {
         let meta = crate::image_converter::metadata();
         assert_eq!(meta.id.as_str(), crate::image_converter::ID);
         assert_eq!(meta.display_name, "图片格式转换器");
@@ -283,9 +283,6 @@ mod tests {
             meta.accepted_types,
             &["image", "StaticImageFile", "StaticImageFiles"]
         );
-        let cli = crate::image_converter::cli_tool();
-        assert_eq!(cli.name, "imageconverter");
-        assert!(cli.aliases.contains(&"imgconv"));
         assert_eq!(crate::image_converter::detectors().len(), 2);
     }
 

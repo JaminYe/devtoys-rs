@@ -260,7 +260,10 @@ mod tests {
         assert_eq!(decode("\\u12").unwrap_err(), EscapeError::InvalidSequence);
         assert_eq!(decode("\\uZZZZ").unwrap_err(), EscapeError::InvalidSequence);
         assert_eq!(decode("\\uD800").unwrap_err(), EscapeError::InvalidSequence);
-        assert_eq!(decode("ok\\n\\uZZ").unwrap_err(), EscapeError::InvalidSequence);
+        assert_eq!(
+            decode("ok\\n\\uZZ").unwrap_err(),
+            EscapeError::InvalidSequence
+        );
     }
 
     #[test]
@@ -269,10 +272,7 @@ mod tests {
             convert("A\\bB\\fC", Conversion::Decode).unwrap(),
             "A\u{8}B\u{c}C"
         );
-        assert_eq!(
-            convert("\\q", Conversion::Decode).unwrap(),
-            "\\q"
-        );
+        assert_eq!(convert("\\q", Conversion::Decode).unwrap(), "\\q");
         assert_eq!(
             convert("\\uZZ", Conversion::Decode).unwrap_err(),
             EscapeError::InvalidSequence
@@ -329,12 +329,7 @@ mod tests {
             assert_eq!(hit.type_name, TYPE_ESCAPED);
         }
 
-        for non_sample in [
-            "hello world",
-            "hello\\qworld",
-            "hello\\",
-            "hello\\uZZZZ",
-        ] {
+        for non_sample in ["hello world", "hello\\qworld", "hello\\", "hello\\uZZZZ"] {
             let parent = DetectedPayload::new(TYPE_TEXT, non_sample);
             let hit = EscapedTextDetector.detect(&RawData::text(non_sample), Some(&parent));
             assert!(hit.is_none(), "Should not detect: {non_sample}");

@@ -2,7 +2,6 @@ use std::collections::BTreeMap;
 
 use serde::{Deserialize, Serialize};
 
-use crate::i18n::LanguagePreference;
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum ThemePreference {
@@ -34,8 +33,6 @@ pub struct WindowState {
 pub struct AppSettings {
     #[serde(default)]
     pub theme: ThemePreference,
-    #[serde(default)]
-    pub language: LanguagePreference,
     #[serde(default = "default_true")]
     pub smart_detection_enabled: bool,
     #[serde(default = "default_true")]
@@ -57,7 +54,6 @@ impl Default for AppSettings {
         Self {
             theme: ThemePreference::System,
             smart_detection_enabled: true,
-            language: LanguagePreference::System,
             smart_detection_paste: true,
             favorites: Vec::new(),
             window: None,

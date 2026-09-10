@@ -652,8 +652,7 @@ fn show_cached_image(
         let fetcher = Arc::clone(ctx.fetcher);
         let egui_ctx = ui.ctx().clone();
         std::thread::spawn(move || {
-            let res = load_preview_image_with(&url, Some(&*fetcher))
-                .map_err(|e| e.to_string());
+            let res = load_preview_image_with(&url, Some(&*fetcher)).map_err(|e| e.to_string());
             let _ = tx.send(ImageLoadResult {
                 url,
                 generation,
@@ -749,10 +748,10 @@ impl ToolView for MarkdownPreviewView {
     fn ui(&mut self, ui: &mut egui::Ui) {
         self.poll_image_results(ui.ctx());
         ui.horizontal_wrapped(|ui| {
-            if ui::toggle(ui, self.preview_dark, ui::t(ui, "settings.theme_dark")).clicked() {
+            if ui::toggle(ui, self.preview_dark, ui::t("settings.theme_dark")).clicked() {
                 self.preview_dark = true;
             }
-            if ui::toggle(ui, !self.preview_dark, ui::t(ui, "settings.theme_light")).clicked() {
+            if ui::toggle(ui, !self.preview_dark, ui::t("settings.theme_light")).clicked() {
                 self.preview_dark = false;
             }
         });
@@ -764,7 +763,7 @@ impl ToolView for MarkdownPreviewView {
             ui.allocate_ui(egui::vec2(w, total.y), |ui| {
                 if ui::labeled_code(
                     ui,
-                    ui::t(ui, "common.input"),
+                    ui::t("common.input"),
                     "md-editor",
                     &mut self.editor,
                     "Markdown",
@@ -896,30 +895,9 @@ mod tests {
 
     #[test]
     fn test_markdown_preview_i18n_keys() {
-        assert_eq!(
-            devtoys_api::t("markdown.title", devtoys_api::Language::ZhCn),
-            "Markdown 预览"
-        );
-        assert_eq!(
-            devtoys_api::t("markdown.title", devtoys_api::Language::EnUs),
-            "Markdown Preview"
-        );
-        assert_eq!(
-            devtoys_api::t("settings.theme_dark", devtoys_api::Language::ZhCn),
-            "深色"
-        );
-        assert_eq!(
-            devtoys_api::t("settings.theme_dark", devtoys_api::Language::EnUs),
-            "Dark"
-        );
-        assert_eq!(
-            devtoys_api::t("settings.theme_light", devtoys_api::Language::ZhCn),
-            "浅色"
-        );
-        assert_eq!(
-            devtoys_api::t("settings.theme_light", devtoys_api::Language::EnUs),
-            "Light"
-        );
+        assert_eq!(devtoys_api::t("markdown.title"), "Markdown 预览");
+        assert_eq!(devtoys_api::t("settings.theme_dark"), "深色");
+        assert_eq!(devtoys_api::t("settings.theme_light"), "浅色");
     }
 
     fn test_png_bytes() -> Vec<u8> {
@@ -1098,12 +1076,18 @@ mod tests {
 
         let ctx = egui::Context::default();
         run_frame(&mut view, &ctx);
-        assert_eq!(fetcher.call_count.load(std::sync::atomic::Ordering::SeqCst), 1);
+        assert_eq!(
+            fetcher.call_count.load(std::sync::atomic::Ordering::SeqCst),
+            1
+        );
 
         // Subsequent frames before result is polled should NOT spawn new fetches
         run_frame(&mut view, &ctx);
         run_frame(&mut view, &ctx);
-        assert_eq!(fetcher.call_count.load(std::sync::atomic::Ordering::SeqCst), 1);
+        assert_eq!(
+            fetcher.call_count.load(std::sync::atomic::Ordering::SeqCst),
+            1
+        );
 
         // Wait for background worker
         for _ in 0..50 {
@@ -1117,7 +1101,10 @@ mod tests {
 
         // Further frames after Ready should NOT spawn new fetches
         run_frame(&mut view, &ctx);
-        assert_eq!(fetcher.call_count.load(std::sync::atomic::Ordering::SeqCst), 1);
+        assert_eq!(
+            fetcher.call_count.load(std::sync::atomic::Ordering::SeqCst),
+            1
+        );
     }
 
     #[test]

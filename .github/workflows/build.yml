@@ -63,7 +63,6 @@ jobs:
           BIN_DIR="target/${{ matrix.target }}/release"
           if [ "${{ runner.os }}" = "Windows" ]; then EXT=".exe"; else EXT=""; fi
           cp "$BIN_DIR/devtoys$EXT" package/
-          cp "$BIN_DIR/devtoys-cli$EXT" package/
           cp README.md LICENSE package/ 2>/dev/null || true
 
       - name: Create archives

@@ -236,7 +236,7 @@ impl ToolView for JwtView {
             if ui::toggle(
                 ui,
                 self.mode == JwtMode::Decode,
-                ui::t(ui, "base64_text.decode"),
+                ui::t("base64_text.decode"),
             )
             .clicked()
             {
@@ -246,7 +246,7 @@ impl ToolView for JwtView {
             if ui::toggle(
                 ui,
                 self.mode == JwtMode::Encode,
-                ui::t(ui, "base64_text.encode"),
+                ui::t("base64_text.encode"),
             )
             .clicked()
             {
@@ -266,13 +266,13 @@ impl ToolView for JwtView {
         });
         if let Some(err) = self.error.as_deref() {
             let msg = if err == "校验失败" {
-                ui::t(ui, "jwt.invalid")
+                ui::t("jwt.invalid")
             } else {
                 err
             };
             ui::error_label(ui, Some(msg));
         } else if self.validate_token && !self.token.trim().is_empty() {
-            ui.colored_label(ui::success(ui), ui::t(ui, "jwt.valid"));
+            ui.colored_label(ui::success(ui), ui::t("jwt.valid"));
         }
         dirty |= key_edit(ui, &mut self.secret);
         ui.columns(2, |cols| {
@@ -282,7 +282,7 @@ impl ToolView for JwtView {
         match self.mode {
             JwtMode::Decode => {
                 dirty |= ui
-                    .checkbox(&mut self.validate_token, ui::t(ui, "jwt.validate"))
+                    .checkbox(&mut self.validate_token, ui::t("jwt.validate"))
                     .changed();
                 ui.add_enabled_ui(self.validate_token, |ui| {
                     ui.horizontal_wrapped(|ui| {
@@ -316,7 +316,7 @@ impl ToolView for JwtView {
                     |ui| {
                         ui::labeled_code(
                             ui,
-                            ui::t(ui, "jwt.header"),
+                            ui::t("jwt.header"),
                             "jwt-header",
                             &mut self.header_out,
                             "头部",
@@ -329,7 +329,7 @@ impl ToolView for JwtView {
                         ui.allocate_ui(egui::vec2(avail.x, json_h), |ui| {
                             ui::labeled_code(
                                 ui,
-                                ui::t(ui, "jwt.payload"),
+                                ui::t("jwt.payload"),
                                 "jwt-payload-out",
                                 &mut self.payload_out,
                                 "载荷",
@@ -359,7 +359,7 @@ impl ToolView for JwtView {
                     |ui| {
                         ui::labeled_code(
                             ui,
-                            ui::t(ui, "jwt.signature"),
+                            ui::t("jwt.signature"),
                             "jwt-sig",
                             &mut self.signature_out,
                             "签名",
@@ -386,7 +386,7 @@ impl ToolView for JwtView {
                 ui.allocate_ui(egui::vec2(avail.x, (avail.y - token_h).max(80.0)), |ui| {
                     dirty |= ui::labeled_code(
                         ui,
-                        ui::t(ui, "jwt.payload"),
+                        ui::t("jwt.payload"),
                         "jwt-payload",
                         &mut self.payload,
                         "Payload JSON",
@@ -981,20 +981,13 @@ mod tests {
             "uuid.version",
         ];
         for key in keys {
-            let zh = devtoys_api::t(key, devtoys_api::Language::ZhCn);
-            let en = devtoys_api::t(key, devtoys_api::Language::EnUs);
-            assert_ne!(zh, key, "Key {key} should have ZhCn translation");
-            assert_ne!(en, key, "Key {key} should have EnUs translation");
-            assert!(!zh.is_empty(), "ZhCn translation for {key} should not be empty");
-            assert!(!en.is_empty(), "EnUs translation for {key} should not be empty");
-            assert_ne!(zh, en, "ZhCn and EnUs for {key} should differ");
+            let zh = devtoys_api::t(key);
+            assert_ne!(zh, key, "Key {key} should have Chinese translation");
+            assert!(!zh.is_empty(), "Translation for {key} should not be empty");
         }
 
         // Test error path translation: JWT invalid signature
-        let err_zh = devtoys_api::t("jwt.invalid", devtoys_api::Language::ZhCn);
-        let err_en = devtoys_api::t("jwt.invalid", devtoys_api::Language::EnUs);
+        let err_zh = devtoys_api::t("jwt.invalid");
         assert_eq!(err_zh, "签名无效");
-        assert_eq!(err_en, "Signature is invalid");
-        assert_ne!(err_zh, err_en);
     }
 }

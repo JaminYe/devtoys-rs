@@ -134,7 +134,9 @@ impl<'a> Formatter<'a> {
     }
 
     fn look_behind(&self, n: usize) -> Option<Token> {
-        self.index.checked_sub(n).and_then(|i| self.tokens.get(i).copied())
+        self.index
+            .checked_sub(n)
+            .and_then(|i| self.tokens.get(i).copied())
     }
 
     fn look_ahead(&self, n: usize) -> Option<Token> {
@@ -148,7 +150,10 @@ impl<'a> Formatter<'a> {
 
     fn format_block_comment(&mut self, token: Token) {
         self.add_newline();
-        self.out.push_str(&indent_comment(token.value(self.query), &self.current_indent()));
+        self.out.push_str(&indent_comment(
+            token.value(self.query),
+            &self.current_indent(),
+        ));
         self.add_newline();
     }
 

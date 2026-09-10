@@ -411,7 +411,13 @@ mod sql {
         reserved_top_level: TOP,
         reserved_newline: NEWLINE,
         reserved_top_level_no_indent: NOINDENT,
-        string_types: &[StringType::DoubleQuote, StringType::NSingle, StringType::SingleQuote, StringType::Backtick, StringType::Brackets],
+        string_types: &[
+            StringType::DoubleQuote,
+            StringType::NSingle,
+            StringType::SingleQuote,
+            StringType::Backtick,
+            StringType::Brackets,
+        ],
         open_parens: &["(", "CASE"],
         close_parens: &[")", "END"],
         indexed_placeholders: &['?'],
@@ -654,26 +660,30 @@ mod tsql {
         "CROSS JOIN",
         "NATURAL JOIN",
     ];
-    pub(crate) const NOINDENT: &[&str] = &[
-        "INTERSECT",
-        "INTERSECT ALL",
-        "MINUS",
-        "UNION",
-        "UNION ALL",
-    ];
+    pub(crate) const NOINDENT: &[&str] =
+        &["INTERSECT", "INTERSECT ALL", "MINUS", "UNION", "UNION ALL"];
     pub(crate) static DIALECT: Dialect = Dialect {
         reserved_words: RESERVED,
         reserved_top_level: TOP,
         reserved_newline: NEWLINE,
         reserved_top_level_no_indent: NOINDENT,
-        string_types: &[StringType::DoubleQuote, StringType::NSingle, StringType::SingleQuote, StringType::Backtick, StringType::Brackets],
+        string_types: &[
+            StringType::DoubleQuote,
+            StringType::NSingle,
+            StringType::SingleQuote,
+            StringType::Backtick,
+            StringType::Brackets,
+        ],
         open_parens: &["(", "CASE"],
         close_parens: &[")", "END"],
         indexed_placeholders: &[],
         named_placeholders: &['@'],
         line_comments: &["--"],
         special_word_chars: &['#', '@', '$'],
-        extra_operators: &[">=", "<=", "<>", "!=", "!<", "!>", "+=", "-=", "*=", "/=", "%=", "|=", "&=", "^=", "::"],
+        extra_operators: &[
+            ">=", "<=", "<>", "!=", "!<", "!>", "+=", "-=", "*=", "/=", "%=", "|=", "&=", "^=",
+            "::",
+        ],
         override_kind: OverrideKind::None,
     };
 }
@@ -911,7 +921,12 @@ mod spark {
         reserved_top_level: TOP,
         reserved_newline: NEWLINE,
         reserved_top_level_no_indent: NOINDENT,
-        string_types: &[StringType::DoubleQuote, StringType::SingleQuote, StringType::Backtick, StringType::Brace],
+        string_types: &[
+            StringType::DoubleQuote,
+            StringType::SingleQuote,
+            StringType::Backtick,
+            StringType::Brace,
+        ],
         open_parens: &["(", "CASE"],
         close_parens: &[")", "END"],
         indexed_placeholders: &['?'],
@@ -1292,7 +1307,11 @@ mod redshift {
         reserved_top_level: TOP,
         reserved_newline: NEWLINE,
         reserved_top_level_no_indent: NOINDENT,
-        string_types: &[StringType::DoubleQuote, StringType::SingleQuote, StringType::Backtick],
+        string_types: &[
+            StringType::DoubleQuote,
+            StringType::SingleQuote,
+            StringType::Backtick,
+        ],
         open_parens: &["("],
         close_parens: &[")"],
         indexed_placeholders: &['?'],
@@ -1802,25 +1821,29 @@ mod postgres {
         "CROSS JOIN",
         "NATURAL JOIN",
     ];
-    pub(crate) const NOINDENT: &[&str] = &[
-        "INTERSECT",
-        "INTERSECT ALL",
-        "UNION",
-        "UNION ALL",
-    ];
+    pub(crate) const NOINDENT: &[&str] = &["INTERSECT", "INTERSECT ALL", "UNION", "UNION ALL"];
     pub(crate) static DIALECT: Dialect = Dialect {
         reserved_words: RESERVED,
         reserved_top_level: TOP,
         reserved_newline: NEWLINE,
         reserved_top_level_no_indent: NOINDENT,
-        string_types: &[StringType::DoubleQuote, StringType::SingleQuote, StringType::UAndSingle, StringType::UAndDouble, StringType::Dollar],
+        string_types: &[
+            StringType::DoubleQuote,
+            StringType::SingleQuote,
+            StringType::UAndSingle,
+            StringType::UAndDouble,
+            StringType::Dollar,
+        ],
         open_parens: &["(", "CASE"],
         close_parens: &[")", "END"],
         indexed_placeholders: &['$'],
         named_placeholders: &[':', '@'],
         line_comments: &["--"],
         special_word_chars: &['@', '$'],
-        extra_operators: &["!=", "<<", ">>", "||/", "|/", "::", "->>", "->", "~~*", "~~", "!~~*", "!~~", "~*", "!~*", "!~", "!!"],
+        extra_operators: &[
+            "!=", "<<", ">>", "||/", "|/", "::", "->>", "->", "~~*", "~~", "!~~*", "!~~", "~*",
+            "!~*", "!~", "!!",
+        ],
         override_kind: OverrideKind::None,
     };
 }
@@ -2235,19 +2258,19 @@ mod plsql {
         "CROSS JOIN",
         "NATURAL JOIN",
     ];
-    pub(crate) const NOINDENT: &[&str] = &[
-        "INTERSECT",
-        "INTERSECT ALL",
-        "MINUS",
-        "UNION",
-        "UNION ALL",
-    ];
+    pub(crate) const NOINDENT: &[&str] =
+        &["INTERSECT", "INTERSECT ALL", "MINUS", "UNION", "UNION ALL"];
     pub(crate) static DIALECT: Dialect = Dialect {
         reserved_words: RESERVED,
         reserved_top_level: TOP,
         reserved_newline: NEWLINE,
         reserved_top_level_no_indent: NOINDENT,
-        string_types: &[StringType::DoubleQuote, StringType::NSingle, StringType::SingleQuote, StringType::Backtick],
+        string_types: &[
+            StringType::DoubleQuote,
+            StringType::NSingle,
+            StringType::SingleQuote,
+            StringType::Backtick,
+        ],
         open_parens: &["(", "CASE"],
         close_parens: &[")", "END"],
         indexed_placeholders: &['?'],
@@ -2476,19 +2499,18 @@ mod n1ql {
         "RIGHT JOIN",
         "RIGHT OUTER JOIN",
     ];
-    pub(crate) const NOINDENT: &[&str] = &[
-        "INTERSECT",
-        "INTERSECT ALL",
-        "MINUS",
-        "UNION",
-        "UNION ALL",
-    ];
+    pub(crate) const NOINDENT: &[&str] =
+        &["INTERSECT", "INTERSECT ALL", "MINUS", "UNION", "UNION ALL"];
     pub(crate) static DIALECT: Dialect = Dialect {
         reserved_words: RESERVED,
         reserved_top_level: TOP,
         reserved_newline: NEWLINE,
         reserved_top_level_no_indent: NOINDENT,
-        string_types: &[StringType::DoubleQuote, StringType::SingleQuote, StringType::Backtick],
+        string_types: &[
+            StringType::DoubleQuote,
+            StringType::SingleQuote,
+            StringType::Backtick,
+        ],
         open_parens: &["(", "[", "{"],
         close_parens: &[")", "]", "}"],
         indexed_placeholders: &[],
@@ -2806,18 +2828,17 @@ mod mysql {
         "NATURAL RIGHT JOIN",
         "NATURAL RIGHT OUTER JOIN",
     ];
-    pub(crate) const NOINDENT: &[&str] = &[
-        "INTERSECT",
-        "INTERSECT ALL",
-        "UNION",
-        "UNION ALL",
-    ];
+    pub(crate) const NOINDENT: &[&str] = &["INTERSECT", "INTERSECT ALL", "UNION", "UNION ALL"];
     pub(crate) static DIALECT: Dialect = Dialect {
         reserved_words: RESERVED,
         reserved_top_level: TOP,
         reserved_newline: NEWLINE,
         reserved_top_level_no_indent: NOINDENT,
-        string_types: &[StringType::DoubleQuote, StringType::SingleQuote, StringType::Backtick],
+        string_types: &[
+            StringType::DoubleQuote,
+            StringType::SingleQuote,
+            StringType::Backtick,
+        ],
         open_parens: &["(", "CASE"],
         close_parens: &[")", "END"],
         indexed_placeholders: &['?'],
@@ -3122,18 +3143,17 @@ mod mariadb {
         "NATURAL RIGHT JOIN",
         "NATURAL RIGHT OUTER JOIN",
     ];
-    pub(crate) const NOINDENT: &[&str] = &[
-        "INTERSECT",
-        "INTERSECT ALL",
-        "UNION",
-        "UNION ALL",
-    ];
+    pub(crate) const NOINDENT: &[&str] = &["INTERSECT", "INTERSECT ALL", "UNION", "UNION ALL"];
     pub(crate) static DIALECT: Dialect = Dialect {
         reserved_words: RESERVED,
         reserved_top_level: TOP,
         reserved_newline: NEWLINE,
         reserved_top_level_no_indent: NOINDENT,
-        string_types: &[StringType::DoubleQuote, StringType::SingleQuote, StringType::Backtick],
+        string_types: &[
+            StringType::DoubleQuote,
+            StringType::SingleQuote,
+            StringType::Backtick,
+        ],
         open_parens: &["(", "CASE"],
         close_parens: &[")", "END"],
         indexed_placeholders: &['?'],
@@ -3692,19 +3712,19 @@ mod db2 {
         "CROSS JOIN",
         "NATURAL JOIN",
     ];
-    pub(crate) const NOINDENT: &[&str] = &[
-        "INTERSECT",
-        "INTERSECT ALL",
-        "MINUS",
-        "UNION",
-        "UNION ALL",
-    ];
+    pub(crate) const NOINDENT: &[&str] =
+        &["INTERSECT", "INTERSECT ALL", "MINUS", "UNION", "UNION ALL"];
     pub(crate) static DIALECT: Dialect = Dialect {
         reserved_words: RESERVED,
         reserved_top_level: TOP,
         reserved_newline: NEWLINE,
         reserved_top_level_no_indent: NOINDENT,
-        string_types: &[StringType::DoubleQuote, StringType::SingleQuote, StringType::Backtick, StringType::Brackets],
+        string_types: &[
+            StringType::DoubleQuote,
+            StringType::SingleQuote,
+            StringType::Backtick,
+            StringType::Brackets,
+        ],
         open_parens: &["("],
         close_parens: &[")"],
         indexed_placeholders: &['?'],
@@ -3717,4 +3737,3 @@ mod db2 {
 }
 
 pub(crate) static DB2: Dialect = db2::DIALECT;
-

@@ -3,14 +3,8 @@
 use std::sync::LazyLock;
 
 use egui::{Color32, Ui, Vec2};
-pub fn current_language(ui: &Ui) -> devtoys_api::Language {
-    ui.ctx()
-        .data(|d| d.get_temp(egui::Id::new("app_language")))
-        .unwrap_or_default()
-}
-
-pub fn t<'a>(ui: &Ui, key: &'a str) -> &'a str {
-    devtoys_api::t(key, current_language(ui))
+pub fn t(key: &str) -> &str {
+    devtoys_api::t(key)
 }
 
 pub fn danger(ui: &Ui) -> Color32 {
@@ -64,9 +58,9 @@ pub fn copy_button(ui: &mut Ui, payload: Option<&str>) -> egui::Response {
         .is_some_and(|s| now - s.copied_at < COPY_FEEDBACK_DURATION.as_secs_f64());
 
     let (label, fill) = if is_copied {
-        (t(ui, "common.copied"), success(ui))
+        (t("common.copied"), success(ui))
     } else {
-        (t(ui, "common.copy"), ui.visuals().selection.stroke.color)
+        (t("common.copy"), ui.visuals().selection.stroke.color)
     };
     let response =
         ui.add(egui::Button::new(egui::RichText::new(label).color(Color32::WHITE)).fill(fill));
@@ -110,7 +104,13 @@ static DARK_THEME: LazyLock<syntect::highlighting::Theme> = LazyLock::new(|| {
         .themes
         .remove("base16-ocean.dark")
         .or_else(|| themes.themes.remove("Solarized (dark)"))
-        .unwrap_or_else(|| themes.themes.into_values().next().expect("syntect default theme"))
+        .unwrap_or_else(|| {
+            themes
+                .themes
+                .into_values()
+                .next()
+                .expect("syntect default theme")
+        })
 });
 
 static LIGHT_THEME: LazyLock<syntect::highlighting::Theme> = LazyLock::new(|| {
@@ -119,7 +119,13 @@ static LIGHT_THEME: LazyLock<syntect::highlighting::Theme> = LazyLock::new(|| {
         .themes
         .remove("InspiredGitHub")
         .or_else(|| themes.themes.remove("Solarized (light)"))
-        .unwrap_or_else(|| themes.themes.into_values().next().expect("syntect default theme"))
+        .unwrap_or_else(|| {
+            themes
+                .themes
+                .into_values()
+                .next()
+                .expect("syntect default theme")
+        })
 });
 
 fn syntax_set() -> &'static syntect::parsing::SyntaxSet {
@@ -485,7 +491,8 @@ mod tests {
                 assert_eq!(job_inv.text, xml_invalid, "无效 XML 内容必须完整保留");
 
                 // 3. SQL 有效与无效
-                let sql_valid = "SELECT id, name, created_at FROM users WHERE active = 1 ORDER BY id DESC;";
+                let sql_valid =
+                    "SELECT id, name, created_at FROM users WHERE active = 1 ORDER BY id DESC;";
                 let job = highlight_layout_job(ui, sql_valid, Some("sql"), 500.0);
                 assert_eq!(job.text, sql_valid);
                 let colors: std::collections::HashSet<_> =
@@ -505,7 +512,8 @@ mod tests {
                 assert_eq!(plain_job.text, "plain text content");
                 assert_eq!(plain_job.sections.len(), 1);
 
-                let unknown_job = highlight_layout_job(ui, "some code", Some("unknown-lang-1234"), 500.0);
+                let unknown_job =
+                    highlight_layout_job(ui, "some code", Some("unknown-lang-1234"), 500.0);
                 assert_eq!(unknown_job.text, "some code");
                 assert_eq!(unknown_job.sections.len(), 1);
             });
@@ -545,8 +553,12 @@ mod tests {
         assert!(has_zh, "ZhCn copy button should display '复制'");
 
         // Click in ZhCn: feedback label is "已复制 ✓"
-        let (_, _, feedback_zh) =
-            render_frame(&ctx, 0.1, Some("hello"), click_events(resp_zh.rect.center()));
+        let (_, _, feedback_zh) = render_frame(
+            &ctx,
+            0.1,
+            Some("hello"),
+            click_events(resp_zh.rect.center()),
+        );
         assert!(feedback_zh);
         let (out_zh_copied, _, _) = render_frame(&ctx, 0.15, Some("hello"), vec![]);
         let has_zh_copied = out_zh_copied.shapes.iter().any(|s| match &s.shape {
@@ -554,27 +566,5 @@ mod tests {
             _ => false,
         });
         assert!(has_zh_copied, "ZhCn feedback should display '已复制 ✓'");
-        // 2. EnUs: button label is "Copy"
-        let ctx_en = egui::Context::default();
-        ctx_en.data_mut(|d| {
-            d.insert_temp(egui::Id::new("app_language"), devtoys_api::Language::EnUs);
-        });
-        let (out_en, resp_en, _) = render_frame(&ctx_en, 0.0, Some("hello"), vec![]);
-        let has_en = out_en.shapes.iter().any(|s| match &s.shape {
-            egui::Shape::Text(t) => t.galley.text() == "Copy",
-            _ => false,
-        });
-        assert!(has_en, "EnUs copy button should display 'Copy'");
-
-        // Click in EnUs: feedback label is "Copied ✓"
-        let (_, _, feedback_en) =
-            render_frame(&ctx_en, 0.1, Some("hello"), click_events(resp_en.rect.center()));
-        assert!(feedback_en);
-        let (out_en_copied, _, _) = render_frame(&ctx_en, 0.15, Some("hello"), vec![]);
-        let has_en_copied = out_en_copied.shapes.iter().any(|s| match &s.shape {
-            egui::Shape::Text(t) => t.galley.text() == "Copied ✓",
-            _ => false,
-        });
-        assert!(has_en_copied, "EnUs feedback should display 'Copied ✓'");
     }
 }

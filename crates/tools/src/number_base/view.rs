@@ -123,19 +123,19 @@ impl NumberBaseView {
             Signedness::Unsigned => "无符号：64 位无符号整数（0 至 18446744073709551615）。",
         };
         ui.label(egui::RichText::new(hint).small().weak());
-        ui.label(ui::t(ui, "number_base.decimal"));
+        ui.label(ui::t("number_base.decimal"));
         if ui::singleline(ui, "nb-dec", &mut self.basic.decimal, "十进制") {
             self.sync_from(NumberBase::Decimal);
         }
-        ui.label(ui::t(ui, "number_base.hexadecimal"));
+        ui.label(ui::t("number_base.hexadecimal"));
         if ui::singleline(ui, "nb-hex", &mut self.basic.hexadecimal, "十六进制") {
             self.sync_from(NumberBase::Hexadecimal);
         }
-        ui.label(ui::t(ui, "number_base.octal"));
+        ui.label(ui::t("number_base.octal"));
         if ui::singleline(ui, "nb-oct", &mut self.basic.octal, "八进制") {
             self.sync_from(NumberBase::Octal);
         }
-        ui.label(ui::t(ui, "number_base.binary"));
+        ui.label(ui::t("number_base.binary"));
         if ui::singleline(ui, "nb-bin", &mut self.basic.binary, "二进制") {
             self.sync_from(NumberBase::Binary);
         }
@@ -171,7 +171,7 @@ impl NumberBaseView {
             ui.allocate_ui(egui::vec2(w, total.y), |ui| {
                 if ui::labeled_code(
                     ui,
-                    ui::t(ui, "common.input"),
+                    ui::t("common.input"),
                     "nb-adv-in",
                     &mut self.advanced_input,
                     "高级输入",
@@ -184,7 +184,7 @@ impl NumberBaseView {
             ui.allocate_ui(egui::vec2(w, total.y), |ui| {
                 ui::labeled_code(
                     ui,
-                    ui::t(ui, "common.output"),
+                    ui::t("common.output"),
                     "nb-adv-out",
                     &mut self.advanced_output,
                     "高级输出",
@@ -207,16 +207,31 @@ impl ToolView for NumberBaseView {
                 self.reconvert_advanced();
             }
             if !self.advanced {
-                if ui::toggle(ui, self.signedness == Signedness::Signed, ui::t(ui, "number_base.signed")).clicked() {
+                if ui::toggle(
+                    ui,
+                    self.signedness == Signedness::Signed,
+                    ui::t("number_base.signed"),
+                )
+                .clicked()
+                {
                     self.signedness = Signedness::Signed;
                     self.sync_from(self.last_from);
                 }
-                if ui::toggle(ui, self.signedness == Signedness::Unsigned, ui::t(ui, "number_base.unsigned")).clicked() {
+                if ui::toggle(
+                    ui,
+                    self.signedness == Signedness::Unsigned,
+                    ui::t("number_base.unsigned"),
+                )
+                .clicked()
+                {
                     self.signedness = Signedness::Unsigned;
                     self.sync_from(self.last_from);
                 }
             }
-            if ui.checkbox(&mut self.thousands, ui::t(ui, "number_base.format_thousands")).changed() {
+            if ui
+                .checkbox(&mut self.thousands, ui::t("number_base.format_thousands"))
+                .changed()
+            {
                 self.sync_from(NumberBase::Decimal);
             }
             ui::copy_button(

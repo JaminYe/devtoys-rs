@@ -1,14 +1,11 @@
-mod cli;
 mod detector;
 mod helper;
 #[cfg(feature = "gui")]
 mod view;
 
 use crate::catalog::Tool;
-use crate::cli::CliTool;
 #[cfg(feature = "gui")]
 use crate::slot::ToolHandle;
-pub use cli::cli_tool;
 use devtoys_api::{Detector, GroupId, ToolId, ToolMetadata};
 pub use helper::{
     add_thousands_separators, convert_base, convert_custom, convert_rfc4648, decode_custom,
@@ -49,10 +46,6 @@ impl Tool for NumberBaseTool {
         metadata()
     }
 
-    fn cli(&self) -> Option<CliTool> {
-        Some(cli_tool())
-    }
-
     fn detectors(&self) -> Vec<Box<dyn Detector>> {
         detectors()
     }
@@ -76,7 +69,6 @@ mod tests {
     fn number_base_tool_implements_tool() {
         let tool = NumberBaseTool;
         assert_eq!(tool.metadata().id.as_str(), ID);
-        assert!(tool.cli().is_some());
         assert!(!tool.detectors().is_empty());
         #[cfg(feature = "gui")]
         assert!(tool.create_view().is_some());

@@ -49,8 +49,8 @@ impl ToolView for UrlView {
     fn ui(&mut self, ui: &mut egui::Ui) {
         ui.horizontal_wrapped(|ui| {
             for (label, value) in [
-                (ui::t(ui, "url.encode"), Conversion::Encode),
-                (ui::t(ui, "url.decode"), Conversion::Decode),
+                (ui::t("url.encode"), Conversion::Encode),
+                (ui::t("url.decode"), Conversion::Decode),
             ] {
                 if ui::toggle(ui, self.conversion == value, label).clicked() {
                     self.conversion = value;
@@ -67,20 +67,19 @@ impl ToolView for UrlView {
         ui::split_2(
             ui,
             |ui| {
-                input_changed =
-                    ui::labeled_code(
-                        ui,
-                        ui::t(ui, "common.input"),
-                        "url-in",
-                        &mut self.input,
-                        "粘贴文本",
-                        true,
-                    );
+                input_changed = ui::labeled_code(
+                    ui,
+                    ui::t("common.input"),
+                    "url-in",
+                    &mut self.input,
+                    "粘贴文本",
+                    true,
+                );
             },
             |ui| {
                 ui::labeled_code(
                     ui,
-                    ui::t(ui, "common.output"),
+                    ui::t("common.output"),
                     "url-out",
                     &mut self.output,
                     "编解码结果",

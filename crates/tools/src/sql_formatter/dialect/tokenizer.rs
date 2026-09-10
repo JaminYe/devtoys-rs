@@ -82,9 +82,7 @@ impl Tokenizer {
             .or_else(|| string_token(rest, self.string_types))
             .or_else(|| paren_token(rest, &self.open_parens, TokenType::OpenParen))
             .or_else(|| paren_token(rest, &self.close_parens, TokenType::CloseParen))
-            .or_else(|| {
-                placeholder_token(rest, self.named_placeholders, self.indexed_placeholders)
-            })
+            .or_else(|| placeholder_token(rest, self.named_placeholders, self.indexed_placeholders))
             .or_else(|| number_token(rest))
             .or_else(|| self.reserved_token(rest, previous, query))
             .or_else(|| word_token(rest, self.special_word_chars))
@@ -308,11 +306,7 @@ fn paren_token(rest: &str, parens: &[&str], token_type: TokenType) -> Option<(us
     None
 }
 
-fn placeholder_token(
-    rest: &str,
-    named: &[char],
-    indexed: &[char],
-) -> Option<(usize, TokenType)> {
+fn placeholder_token(rest: &str, named: &[char], indexed: &[char]) -> Option<(usize, TokenType)> {
     named_placeholder(rest, named)
         .or_else(|| indexed_placeholder(rest, indexed))
         .map(|len| (len, TokenType::PlaceHolder))
@@ -448,10 +442,16 @@ fn operator_token(rest: &str, operators: &[&str]) -> Option<(usize, TokenType)> 
             return Some((op.len(), TokenType::Operator));
         }
     }
-    rest.chars().next().map(|c| (c.len_utf8(), TokenType::Operator))
+    rest.chars()
+        .next()
+        .map(|c| (c.len_utf8(), TokenType::Operator))
 }
 
-fn match_word_list(rest: &str, words: &[&str], token_type: TokenType) -> Option<(usize, TokenType)> {
+fn match_word_list(
+    rest: &str,
+    words: &[&str],
+    token_type: TokenType,
+) -> Option<(usize, TokenType)> {
     for word in words {
         if let Some(len) = match_keyword(rest, word) {
             return Some((len, token_type));

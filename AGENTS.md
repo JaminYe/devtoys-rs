@@ -1,14 +1,13 @@
 # AGENTS.md
 
-基于 Rust + egui / eframe 的跨平台开发者工具箱，提供原生桌面 GUI 与无头 CLI 命令行支持。
+基于 Rust + egui / eframe 的跨平台开发者工具箱，提供原生桌面 GUI 支持，界面固定为简体中文。
 
 ## Project map
 
 - `crates/api/` - 公共契约与核心类型（ToolMetadata, GroupId, Detector trait, AppSettings）
 - `crates/core/` - 调度引擎与状态持久化（ToolRegistry, DetectionEngine, SettingsStore）
-- `crates/tools/` - 30+ 业务工具实现（纯函数 helper、CLI 子命令、egui 视图与类型探测器）
+- `crates/tools/` - 23 业务工具实现（纯函数 helper、egui 视图与类型探测器）
 - `crates/host/` - egui 桌面 GUI 宿主（窗口外壳、侧栏导航、全局设置与剪贴板监听）
-- `crates/cli/` - 命令行程序入口（子命令路由与输入输出管道）
 - `docs/agents/` - 智能体工程协作规范（Issue 追踪、Triage 标签、Domain 文档规则）
 - `.scratch/` - 本地特性规划与分解工单（Spec 规格与结构化 Issue）
 
@@ -20,18 +19,16 @@
 |---|---|
 | `cargo build` | 编译工作区所有 crate |
 | `cargo build -p devtoys` | 编译桌面 GUI 客户端 |
-| `cargo build -p devtoys-cli` | 编译 CLI 命令行可执行文件 |
 | `cargo test` | 运行工作区全部单元测试与集成测试 |
 | `cargo test -p <package>` | 运行指定 crate 测试（如 `devtoys-core`, `devtoys-tools`） |
 | `cargo clippy` | 执行代码静态代码分析与检查 |
 | `cargo fmt --check` | 检查 Rust 代码格式规范 |
 | `cargo run -p devtoys` | 启动桌面客户端进行交互调试 |
-| `cargo run -p devtoys-cli -- <command>` | 运行指定工具的命令行模式（如 `JsonFormatter -i "{}"`） |
 </important>
 
 <important if="you are adding, modifying, or registering a tool">
-- 每个工具位于 `crates/tools/src/<tool_name>/`，包含 `mod.rs`（元数据与 `Tool` trait 实现）、`helper.rs`（核心算法）、`view.rs`（egui 视图），有命令行子命令的工具还包含 `cli.rs`（CLI 适配器）
-- 业务逻辑与数据转换算法必须放在 `helper.rs`，严禁在 `view.rs` 或 `cli.rs` 中内联算法逻辑
+- 每个工具位于 `crates/tools/src/<tool_name>/`，包含 `mod.rs`（元数据与 `Tool` trait 实现）、`helper.rs`（核心算法）、`view.rs`（egui 视图）
+- 业务逻辑与数据转换算法必须放在 `helper.rs`，严禁在 `view.rs` 中内联算法逻辑
 - GUI 视图必须实现 `ToolView` trait，并正确处理 `on_data_received` 回调以支持智能粘贴
 - 新增或重命名工具必须实现 `Tool` trait，并在 `crates/tools/src/catalog.rs` 的 `default_catalog()` 中完成单点注册
 </important>

@@ -37,10 +37,6 @@ impl Tool for MarkdownPreviewTool {
         metadata()
     }
 
-    fn supports_compact_overlay(&self) -> bool {
-        false
-    }
-
     fn detectors(&self) -> Vec<Box<dyn Detector>> {
         vec![Box::new(MarkdownDetector)]
     }
@@ -64,7 +60,6 @@ mod tests {
     fn markdown_preview_tool_implements_tool() {
         let tool = MarkdownPreviewTool;
         assert_eq!(tool.metadata().id.as_str(), ID);
-        assert!(tool.cli().is_none());
         assert_eq!(tool.detectors().len(), 1);
         #[cfg(feature = "gui")]
         assert!(tool.create_view().is_some());

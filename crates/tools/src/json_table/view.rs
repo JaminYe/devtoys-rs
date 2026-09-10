@@ -64,7 +64,7 @@ impl ToolView for JsonTableView {
             |ui| {
                 input_changed = ui::labeled_code(
                     ui,
-                    ui::t(ui, "common.input"),
+                    ui::t("common.input"),
                     "json-table-in",
                     &mut self.input,
                     "粘贴 JSON 对象数组",
@@ -74,7 +74,7 @@ impl ToolView for JsonTableView {
             |ui| {
                 ui::labeled_code(
                     ui,
-                    ui::t(ui, "common.output"),
+                    ui::t("common.output"),
                     "json-table-out",
                     &mut self.output,
                     "表格",

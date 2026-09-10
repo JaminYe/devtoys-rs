@@ -91,7 +91,7 @@ impl ToolView for TextCompareView {
             if ui::toggle(
                 ui,
                 self.mode == DiffMode::SideBySide,
-                ui::t(ui, "text_compare.side_by_side"),
+                ui::t("text_compare.side_by_side"),
             )
             .clicked()
             {
@@ -100,7 +100,7 @@ impl ToolView for TextCompareView {
             if ui::toggle(
                 ui,
                 self.mode == DiffMode::Inline,
-                ui::t(ui, "text_compare.inline"),
+                ui::t("text_compare.inline"),
             )
             .clicked()
             {
@@ -114,20 +114,20 @@ impl ToolView for TextCompareView {
                 |ui| {
                     ui::labeled_code(
                         ui,
-                        ui::t(ui, "text_compare.original"),
+                        ui::t("text_compare.original"),
                         "diff-left",
                         &mut self.left,
-                        ui::t(ui, "text_compare.original"),
+                        ui::t("text_compare.original"),
                         true,
                     );
                 },
                 |ui| {
                     ui::labeled_code(
                         ui,
-                        ui::t(ui, "text_compare.modified"),
+                        ui::t("text_compare.modified"),
                         "diff-right",
                         &mut self.right,
-                        ui::t(ui, "text_compare.modified"),
+                        ui::t("text_compare.modified"),
                         true,
                     );
                 },
@@ -251,14 +251,13 @@ mod tests {
     #[test]
     fn test_text_compare_i18n_keys() {
         let keys = [
-            ("text_compare.original", "原始内容", "Original text"),
-            ("text_compare.modified", "修改后内容", "Modified text"),
-            ("text_compare.side_by_side", "并排", "Side by side"),
-            ("text_compare.inline", "行内", "Inline"),
+            ("text_compare.original", "原始内容"),
+            ("text_compare.modified", "修改后内容"),
+            ("text_compare.side_by_side", "并排"),
+            ("text_compare.inline", "行内"),
         ];
-        for (key, zh, en) in keys {
-            assert_eq!(devtoys_api::t(key, devtoys_api::Language::ZhCn), zh);
-            assert_eq!(devtoys_api::t(key, devtoys_api::Language::EnUs), en);
+        for (key, zh) in keys {
+            assert_eq!(devtoys_api::t(key), zh);
         }
     }
 }

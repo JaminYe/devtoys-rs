@@ -1,13 +1,10 @@
-mod cli;
 mod helper;
 #[cfg(feature = "gui")]
 mod view;
 
 use crate::catalog::Tool;
-use crate::cli::CliTool;
 #[cfg(feature = "gui")]
 use crate::slot::ToolHandle;
-pub use cli::cli_tool;
 use devtoys_api::{Detector, GroupId, ToolId, ToolMetadata, TYPE_DATE};
 pub use helper::{datetime_to_timestamp, timestamp_to_datetime, DateConvertError, TimestampFormat};
 #[cfg(feature = "gui")]
@@ -44,10 +41,6 @@ impl Tool for DateConverterTool {
         metadata()
     }
 
-    fn cli(&self) -> Option<CliTool> {
-        Some(cli_tool())
-    }
-
     fn detectors(&self) -> Vec<Box<dyn Detector>> {
         detectors()
     }
@@ -71,7 +64,6 @@ mod tests {
     fn date_converter_tool_implements_tool() {
         let tool = DateConverterTool;
         assert_eq!(tool.metadata().id.as_str(), ID);
-        assert!(tool.cli().is_some());
         assert!(tool.detectors().is_empty());
         #[cfg(feature = "gui")]
         assert!(tool.create_view().is_some());

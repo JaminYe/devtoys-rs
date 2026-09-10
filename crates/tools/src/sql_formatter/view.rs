@@ -32,12 +32,7 @@ impl SqlFormatterView {
             self.output.clear();
             return;
         }
-        self.output = format_sql(
-            &self.input,
-            self.indent,
-            self.language,
-            self.leading_comma,
-        );
+        self.output = format_sql(&self.input, self.indent, self.language, self.leading_comma);
     }
 }
 
@@ -45,21 +40,24 @@ impl ToolView for SqlFormatterView {
     fn ui(&mut self, ui: &mut egui::Ui) {
         ui.horizontal_wrapped(|ui| {
             for (label, value) in [
-                (ui::t(ui, "common.two_spaces"), Indentation::TwoSpaces),
-                (ui::t(ui, "common.four_spaces"), Indentation::FourSpaces),
-                (ui::t(ui, "common.one_tab"), Indentation::OneTab),
-                (ui::t(ui, "common.minified"), Indentation::Minified),
+                (ui::t("common.two_spaces"), Indentation::TwoSpaces),
+                (ui::t("common.four_spaces"), Indentation::FourSpaces),
+                (ui::t("common.one_tab"), Indentation::OneTab),
+                (ui::t("common.minified"), Indentation::Minified),
             ] {
                 if ui::toggle(ui, self.indent == value, label).clicked() {
                     self.indent = value;
                     self.reformat();
                 }
             }
-            if ui.checkbox(&mut self.leading_comma, ui::t(ui, "sql.leading_comma")).changed() {
+            if ui
+                .checkbox(&mut self.leading_comma, ui::t("sql.leading_comma"))
+                .changed()
+            {
                 self.reformat();
             }
             let mut lang_changed = false;
-            ui.label(ui::t(ui, "sql.language"));
+            ui.label(ui::t("sql.language"));
             egui::ComboBox::from_id_salt("sql-lang")
                 .selected_text(self.language.display_name())
                 .show_ui(ui, |ui| {
@@ -84,7 +82,7 @@ impl ToolView for SqlFormatterView {
             |ui| {
                 input_changed = ui::labeled_code_editor(
                     ui,
-                    ui::t(ui, "common.input"),
+                    ui::t("common.input"),
                     "sql-in",
                     &mut self.input,
                     "粘贴 SQL",
@@ -95,7 +93,7 @@ impl ToolView for SqlFormatterView {
             |ui| {
                 ui::labeled_code_editor(
                     ui,
-                    ui::t(ui, "common.output"),
+                    ui::t("common.output"),
                     "sql-out",
                     &mut self.output,
                     "格式化结果",

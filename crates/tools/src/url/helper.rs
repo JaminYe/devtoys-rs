@@ -164,7 +164,10 @@ mod tests {
     #[test]
     fn encode_spaces_reserved_and_unicode() {
         assert_eq!(encode("hello world"), "hello%20world");
-        assert_eq!(encode(":/?#[]@!$&'()*+,;="), "%3A%2F%3F%23%5B%5D%40%21%24%26%27%28%29%2A%2B%2C%3B%3D");
+        assert_eq!(
+            encode(":/?#[]@!$&'()*+,;="),
+            "%3A%2F%3F%23%5B%5D%40%21%24%26%27%28%29%2A%2B%2C%3B%3D"
+        );
         assert_eq!(encode("你好"), "%E4%BD%A0%E5%A5%BD");
         assert_eq!(decode("%E4%BD%A0%E5%A5%BD").unwrap(), "你好");
     }

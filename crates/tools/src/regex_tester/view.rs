@@ -120,16 +120,16 @@ impl ToolView for RegexTesterView {
                 .checkbox(&mut self.options.all_matches, "全部匹配")
                 .changed();
             rematch |= ui
-                .checkbox(&mut self.options.ignore_case, ui::t(ui, "regex.ignore_case"))
+                .checkbox(&mut self.options.ignore_case, ui::t("regex.ignore_case"))
                 .changed();
             rematch |= ui
                 .checkbox(&mut self.options.ignore_whitespace, "忽略空白")
                 .changed();
             rematch |= ui
-                .checkbox(&mut self.options.singleline, ui::t(ui, "regex.singleline"))
+                .checkbox(&mut self.options.singleline, ui::t("regex.singleline"))
                 .changed();
             rematch |= ui
-                .checkbox(&mut self.options.multiline, ui::t(ui, "regex.multiline"))
+                .checkbox(&mut self.options.multiline, ui::t("regex.multiline"))
                 .changed();
             if rematch {
                 self.rematch();
@@ -144,8 +144,8 @@ impl ToolView for RegexTesterView {
             ui.set_min_height(total.y);
             ui.allocate_ui(egui::vec2(w, total.y), |ui| {
                 ui.vertical(|ui| {
-                    ui.label(ui::t(ui, "regex.pattern"));
-                    if ui::singleline(ui, "re-pat", &mut self.pattern, ui::t(ui, "regex.pattern")) {
+                    ui.label(ui::t("regex.pattern"));
+                    if ui::singleline(ui, "re-pat", &mut self.pattern, ui::t("regex.pattern")) {
                         self.rematch();
                     }
                     let replacement_reserve = 52.0;
@@ -153,16 +153,16 @@ impl ToolView for RegexTesterView {
                     ui.allocate_ui(egui::vec2(ui.available_width(), sample_h), |ui| {
                         if ui::labeled_code(
                             ui,
-                            ui::t(ui, "regex.sample"),
+                            ui::t("regex.sample"),
                             "re-sample",
                             &mut self.sample,
-                            ui::t(ui, "regex.sample"),
+                            ui::t("regex.sample"),
                             true,
                         ) {
                             self.rematch();
                         }
                     });
-                    ui.label(ui::t(ui, "regex.substitution"));
+                    ui.label(ui::t("regex.substitution"));
                     if ui::singleline(ui, "re-repl", &mut self.replacement, r"$0 $1 ${name} \n \t")
                     {
                         self.rematch();
@@ -178,20 +178,26 @@ impl ToolView for RegexTesterView {
                     let result_h = (rest - table_h).max(80.0);
                     ui.allocate_ui(egui::vec2(ui.available_width(), table_h), |ui| {
                         ui.vertical(|ui| {
-                            ui.label(ui::t(ui, "regex.matches"));
+                            ui.label(ui::t("regex.matches"));
                             draw_match_table(ui, &self.matches);
                         });
                     });
                     ui.allocate_ui(egui::vec2(ui.available_width(), result_h), |ui| {
                         ui.vertical(|ui| {
                             ui.horizontal(|ui| {
-                                ui.label(ui::t(ui, "common.output"));
+                                ui.label(ui::t("common.output"));
                                 ui::copy_button(
                                     ui,
                                     self.error.is_none().then_some(self.replaced.as_str()),
                                 );
                             });
-                            ui::fill_code(ui, "re-replaced", &mut self.replaced, ui::t(ui, "common.output"), false);
+                            ui::fill_code(
+                                ui,
+                                "re-replaced",
+                                &mut self.replaced,
+                                ui::t("common.output"),
+                                false,
+                            );
                         });
                     });
                     ui.label("速查表");
@@ -353,17 +359,16 @@ mod tests {
     #[test]
     fn test_regex_i18n_keys() {
         let keys = [
-            ("regex.pattern", "正则表达式", "Regular expression"),
-            ("regex.sample", "测试文本", "Sample text"),
-            ("regex.substitution", "替换式", "Substitution"),
-            ("regex.ignore_case", "忽略大小写", "Ignore case"),
-            ("regex.multiline", "多行模式", "Multiline"),
-            ("regex.singleline", "单行模式", "Singleline"),
-            ("regex.matches", "匹配项", "Matches"),
+            ("regex.pattern", "正则表达式"),
+            ("regex.sample", "测试文本"),
+            ("regex.substitution", "替换式"),
+            ("regex.ignore_case", "忽略大小写"),
+            ("regex.multiline", "多行模式"),
+            ("regex.singleline", "单行模式"),
+            ("regex.matches", "匹配项"),
         ];
-        for (key, zh, en) in keys {
-            assert_eq!(devtoys_api::t(key, devtoys_api::Language::ZhCn), zh);
-            assert_eq!(devtoys_api::t(key, devtoys_api::Language::EnUs), en);
+        for (key, zh) in keys {
+            assert_eq!(devtoys_api::t(key), zh);
         }
     }
 }

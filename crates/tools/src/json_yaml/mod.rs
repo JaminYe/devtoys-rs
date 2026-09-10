@@ -1,14 +1,11 @@
-mod cli;
 mod detector;
 mod helper;
 #[cfg(feature = "gui")]
 mod view;
 
 use crate::catalog::Tool;
-use crate::cli::CliTool;
 #[cfg(feature = "gui")]
 use crate::slot::ToolHandle;
-pub use cli::cli_tool;
 use devtoys_api::{Detector, GroupId, ToolId, ToolMetadata, TYPE_JSON};
 pub use helper::{convert_json_yaml, looks_like_json, looks_like_yaml, Conversion, JsonYamlError};
 #[cfg(feature = "gui")]
@@ -45,10 +42,6 @@ impl Tool for JsonYamlTool {
         metadata()
     }
 
-    fn cli(&self) -> Option<CliTool> {
-        Some(cli_tool())
-    }
-
     fn detectors(&self) -> Vec<Box<dyn Detector>> {
         detectors()
     }
@@ -72,7 +65,6 @@ mod tests {
     fn json_yaml_tool_implements_tool() {
         let tool = JsonYamlTool;
         assert_eq!(tool.metadata().id.as_str(), ID);
-        assert!(tool.cli().is_some());
         assert!(!tool.detectors().is_empty());
         #[cfg(feature = "gui")]
         assert!(tool.create_view().is_some());

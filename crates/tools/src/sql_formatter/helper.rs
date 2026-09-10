@@ -505,7 +505,12 @@ mod tests {
     fn all_ten_languages_parse_and_reject_unknown() {
         assert_eq!(SqlLanguage::ALL.len(), 10);
         for lang in SqlLanguage::ALL {
-            assert_eq!(SqlLanguage::parse(lang.as_str()), Some(lang), "{}", lang.as_str());
+            assert_eq!(
+                SqlLanguage::parse(lang.as_str()),
+                Some(lang),
+                "{}",
+                lang.as_str()
+            );
         }
         for name in ["sql", "TSQL", "Oracle", "Postgres", ""] {
             assert_eq!(SqlLanguage::parse(name), None, "{name}");
@@ -521,7 +526,10 @@ mod tests {
         let input = "select top 5 [Name] from dbo.Users";
         let sql = pretty_lang(input, SqlLanguage::Sql);
         let tsql = pretty_lang(input, SqlLanguage::Tsql);
-        assert_ne!(sql, tsql, "T-SQL must format differently from generic SQL:\nSQL={sql:?}\nTSQL={tsql:?}");
+        assert_ne!(
+            sql, tsql,
+            "T-SQL must format differently from generic SQL:\nSQL={sql:?}\nTSQL={tsql:?}"
+        );
         assert!(
             tsql.contains("[Name]"),
             "T-SQL must keep bracket identifier: {tsql:?}"

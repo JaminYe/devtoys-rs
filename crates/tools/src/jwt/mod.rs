@@ -79,7 +79,6 @@ mod tests {
     fn jwt_tool_implements_tool() {
         let tool = JwtTool;
         assert_eq!(tool.metadata().id.as_str(), ID);
-        assert!(tool.cli().is_none());
         assert!(tool.detectors().is_empty());
         #[cfg(feature = "gui")]
         assert!(tool.create_view().is_some());

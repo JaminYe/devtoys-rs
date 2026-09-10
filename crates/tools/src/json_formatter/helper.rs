@@ -100,7 +100,8 @@ impl<'a> Parser<'a> {
                             self.pos += 2;
                             let mut closed = false;
                             while self.pos + 1 < self.bytes.len() {
-                                if self.bytes[self.pos] == b'*' && self.bytes[self.pos + 1] == b'/' {
+                                if self.bytes[self.pos] == b'*' && self.bytes[self.pos + 1] == b'/'
+                                {
                                     self.pos += 2;
                                     closed = true;
                                     break;
@@ -192,8 +193,7 @@ impl<'a> Parser<'a> {
             }
         }
         let slice = &self.input[start..self.pos];
-        serde_json::from_str::<serde_json::Number>(slice)
-            .map_err(|_| JsonFormatError::InvalidJson)
+        serde_json::from_str::<serde_json::Number>(slice).map_err(|_| JsonFormatError::InvalidJson)
     }
 
     fn parse_array(&mut self) -> Result<Value, JsonFormatError> {
@@ -523,10 +523,7 @@ mod tests {
     fn duplicate_key_nested_and_array() {
         let input = r#"{"nested":{"a":1,"a":2},"arr":[{"a":1,"a":2},{"x":10,"x":20}]}"#;
         let got = format_json(input, Indentation::Minified, false).unwrap();
-        assert_eq!(
-            got,
-            r#"{"nested":{"a":1},"arr":[{"a":1},{"x":10}]}"#
-        );
+        assert_eq!(got, r#"{"nested":{"a":1},"arr":[{"a":1},{"x":10}]}"#);
     }
 
     #[test]
@@ -680,7 +677,12 @@ mod tests {
 
     #[test]
     fn line_comment_at_eof_without_trailing_newline_is_ok() {
-        let got = format_json(r#"{"a": 1} // comment at EOF without newline"#, Indentation::Minified, false).unwrap();
+        let got = format_json(
+            r#"{"a": 1} // comment at EOF without newline"#,
+            Indentation::Minified,
+            false,
+        )
+        .unwrap();
         assert_eq!(got, r#"{"a":1}"#);
     }
 
