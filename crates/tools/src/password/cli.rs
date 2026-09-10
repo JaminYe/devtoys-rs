@@ -21,7 +21,7 @@ fn configure(cmd: Command) -> Command {
         Arg::new("length")
             .short('l')
             .value_parser(clap::value_parser!(usize))
-            .default_value("30"),
+            .default_value("16"),
     )
     .arg(bool_flag(
         "uppercase",
@@ -73,7 +73,7 @@ fn bool_flag(
 
 fn run(matches: &ArgMatches) -> Result<(), CliError> {
     let options = PasswordOptions {
-        length: matches.get_one::<usize>("length").copied().unwrap_or(30),
+        length: matches.get_one::<usize>("length").copied().unwrap_or(16),
         uppercase: flag(matches, "uppercase", true),
         lowercase: flag(matches, "lowercase", true),
         digits: flag(matches, "digits", true),

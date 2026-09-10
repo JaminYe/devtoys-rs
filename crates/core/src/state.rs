@@ -1,3 +1,4 @@
+use devtoys_api::LanguagePreference;
 use devtoys_api::{AppSettings, ThemePreference, ToolMetadata};
 
 use crate::{CoreError, SettingsStore, ToolRegistry};
@@ -67,6 +68,11 @@ impl AppState {
         self.settings.theme = theme;
         self.persist()
     }
+    pub fn set_language(&mut self, language: LanguagePreference) -> Result<(), CoreError> {
+        self.settings.language = language;
+        self.persist()
+    }
+
 
     pub fn set_smart_detection_enabled(&mut self, enabled: bool) -> Result<(), CoreError> {
         self.settings.smart_detection_enabled = enabled;
@@ -75,6 +81,15 @@ impl AppState {
 
     pub fn set_smart_detection_paste(&mut self, enabled: bool) -> Result<(), CoreError> {
         self.settings.smart_detection_paste = enabled;
+        self.persist()
+    }
+
+    pub fn set_tool_options(
+        &mut self,
+        tool_id: impl Into<String>,
+        value: serde_json::Value,
+    ) -> Result<(), CoreError> {
+        self.settings.set_tool_options(tool_id, value);
         self.persist()
     }
 }

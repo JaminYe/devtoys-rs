@@ -11,9 +11,9 @@ use crate::slot::ToolHandle;
 pub use cli::cli_tool;
 use devtoys_api::{Detector, GroupId, ToolId, ToolMetadata};
 pub use helper::{
-    add_thousands_separators, convert_base, convert_rfc4648, decode_custom, decode_rfc4648,
-    encode_custom, encode_rfc4648, looks_like_number_base, NumberBase, NumberBaseError,
-    Rfc4648Encoding,
+    add_thousands_separators, convert_base, convert_custom, convert_rfc4648, decode_custom,
+    encode_custom, looks_like_number_base, BasicBaseFields, NumberBase, NumberBaseError,
+    Rfc4648Encoding, Signedness,
 };
 #[cfg(feature = "gui")]
 pub use view::NumberBaseView;

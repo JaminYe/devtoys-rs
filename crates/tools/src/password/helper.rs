@@ -20,7 +20,7 @@ pub struct PasswordOptions {
 impl Default for PasswordOptions {
     fn default() -> Self {
         Self {
-            length: 30,
+            length: 16,
             uppercase: true,
             lowercase: true,
             digits: true,
@@ -185,5 +185,11 @@ mod tests {
         assert!(lines
             .iter()
             .all(|line| line.chars().all(|c| c.is_ascii_digit())));
+    }
+
+    #[test]
+    fn default_options_length_is_16() {
+        let options = PasswordOptions::default();
+        assert_eq!(options.length, 16);
     }
 }

@@ -1,7 +1,7 @@
 use devtoys_api::{
     DataTypeSpec, DetectedPayload, Detector, RawData, TYPE_BASE64_IMAGE, TYPE_BASE64_TEXT,
-    TYPE_DATE, TYPE_FILE, TYPE_FILES, TYPE_GZIP, TYPE_IMAGE, TYPE_IMAGE_FILE, TYPE_JSON,
-    TYPE_JSON_ARRAY, TYPE_TEXT, TYPE_XML, TYPE_XSD,
+    TYPE_DATE, TYPE_FILE, TYPE_FILES, TYPE_IMAGE, TYPE_IMAGE_FILE, TYPE_JSON, TYPE_JSON_ARRAY,
+    TYPE_TEXT, TYPE_XML,
 };
 
 #[derive(Debug, Default, Clone, Copy)]
@@ -89,26 +89,6 @@ impl Detector for XmlDetector {
 }
 
 #[derive(Debug, Default, Clone, Copy)]
-pub struct XsdDetector;
-
-impl Detector for XsdDetector {
-    fn data_type(&self) -> DataTypeSpec {
-        DataTypeSpec {
-            name: TYPE_XSD,
-            parent: Some(TYPE_XML),
-        }
-    }
-
-    fn detect(&self, _raw: &RawData, parent: Option<&DetectedPayload>) -> Option<DetectedPayload> {
-        let value = parent_value(parent)?;
-        if !looks_like_xsd(value) {
-            return None;
-        }
-        Some(payload(TYPE_XSD, value))
-    }
-}
-
-#[derive(Debug, Default, Clone, Copy)]
 pub struct Base64TextDetector;
 
 impl Detector for Base64TextDetector {
@@ -164,38 +144,6 @@ impl Detector for Base64ImageDetector {
 }
 
 #[derive(Debug, Default, Clone, Copy)]
-pub struct GzipDetector;
-
-impl Detector for GzipDetector {
-    fn data_type(&self) -> DataTypeSpec {
-        DataTypeSpec {
-            name: TYPE_GZIP,
-            parent: Some(TYPE_TEXT),
-        }
-    }
-
-    fn detect(&self, _raw: &RawData, parent: Option<&DetectedPayload>) -> Option<DetectedPayload> {
-        let value = parent_value(parent)?;
-        if looks_like_i64(value) {
-            return None;
-        }
-        let trimmed = value.trim();
-        if trimmed.is_empty() {
-            return None;
-        }
-        // 1F 8B 08 (gzip + deflate) encodes to the C# prefix "H4sI".
-        if trimmed.starts_with("H4sI") {
-            return Some(payload(TYPE_GZIP, value));
-        }
-        let bytes = decode_base64_std(trimmed)?;
-        if bytes.len() < 2 || bytes[0] != 0x1F || bytes[1] != 0x8B {
-            return None;
-        }
-        Some(payload(TYPE_GZIP, value))
-    }
-}
-
-#[derive(Debug, Default, Clone, Copy)]
 pub struct DateDetector;
 
 impl Detector for DateDetector {
@@ -227,15 +175,16 @@ impl Detector for ImageDetector {
     }
 
     fn detect(&self, raw: &RawData, _parent: Option<&DetectedPayload>) -> Option<DetectedPayload> {
-        let bytes = raw.as_image()?;
+        let RawData::Image { bytes, mime } = raw else {
+            return None;
+        };
         if bytes.is_empty() {
             return None;
         }
-        let mime = match raw {
-            RawData::Image { mime, .. } => mime.clone().unwrap_or_default(),
-            _ => String::new(),
-        };
-        Some(payload(TYPE_IMAGE, mime))
+        Some(
+            DetectedPayload::new(TYPE_IMAGE, mime.clone().unwrap_or_default())
+                .with_bytes(bytes.clone(), mime.clone()),
+        )
     }
 }
 
@@ -301,10 +250,7 @@ impl Detector for ImageFileDetector {
 }
 
 fn payload(type_name: &'static str, value: impl Into<String>) -> DetectedPayload {
-    DetectedPayload {
-        type_name: type_name.to_string(),
-        value: value.into(),
-    }
+    DetectedPayload::new(type_name, value)
 }
 
 fn parent_value(parent: Option<&DetectedPayload>) -> Option<&str> {
@@ -332,12 +278,6 @@ fn looks_like_xml(input: &str) -> bool {
         chars.next();
     }
     matches!(chars.next(), Some(c) if c.is_ascii_alphabetic() || c == '_')
-}
-
-fn looks_like_xsd(input: &str) -> bool {
-    input.contains("xs:schema")
-        || input.contains("xsd:schema")
-        || input.contains("http://www.w3.org/2001/XMLSchema")
 }
 
 fn looks_like_date(input: &str) -> bool {

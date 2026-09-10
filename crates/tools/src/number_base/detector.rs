@@ -21,9 +21,6 @@ impl Detector for NumberBaseDetector {
         if !looks_like_number_base(value) {
             return None;
         }
-        Some(DetectedPayload {
-            type_name: TYPE_NUMBER_BASE.to_string(),
-            value: value.to_string(),
-        })
+        Some(DetectedPayload::new(TYPE_NUMBER_BASE, value))
     }
 }

@@ -1,4 +1,5 @@
 mod cli;
+mod detector;
 mod helper;
 #[cfg(feature = "gui")]
 mod view;
@@ -9,7 +10,9 @@ use crate::cli::CliTool;
 use crate::slot::ToolHandle;
 pub use cli::cli_tool;
 use devtoys_api::{Detector, GroupId, ToolId, ToolMetadata, TYPE_BASE64_IMAGE, TYPE_IMAGE};
-pub use helper::{decode_base64, encode_bytes, inspect_image, Base64ImageError, ImageInfo};
+pub use helper::{
+    decode_base64, encode_bytes, inspect_image, is_image_file_path, Base64ImageError, ImageInfo,
+};
 
 #[cfg(feature = "gui")]
 pub use view::Base64ImageView;
@@ -30,7 +33,7 @@ pub fn metadata() -> ToolMetadata {
 }
 
 pub fn detectors() -> Vec<Box<dyn Detector>> {
-    Vec::new()
+    vec![Box::new(detector::Base64ImageFileDetector)]
 }
 
 #[cfg(feature = "gui")]
@@ -74,7 +77,13 @@ mod tests {
         let tool = Base64ImageTool;
         assert_eq!(tool.metadata().id.as_str(), ID);
         assert!(tool.cli().is_some());
-        assert!(tool.detectors().is_empty());
+        let detectors = tool.detectors();
+        assert_eq!(detectors.len(), 1);
+        assert_eq!(detectors[0].data_type().name, TYPE_BASE64_IMAGE_FILE);
+        assert_eq!(
+            detectors[0].data_type().parent,
+            Some(devtoys_api::TYPE_FILE)
+        );
         #[cfg(feature = "gui")]
         assert!(tool.create_view().is_some());
 

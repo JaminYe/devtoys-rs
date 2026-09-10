@@ -9,7 +9,7 @@ pub fn cli_tool() -> CliTool {
         tool_id: ID,
         name: "sqlFormatter",
         aliases: &["sqlf"],
-        about: "按方言美化 SQL",
+        about: "美化 SQL",
         configure,
         run,
     }
@@ -36,18 +36,8 @@ fn configure(cmd: Command) -> Command {
     .arg(
         Arg::new("language")
             .long("language")
-            .value_parser([
-                "Sql",
-                "Tsql",
-                "Spark",
-                "RedShift",
-                "PostgreSql",
-                "PlSql",
-                "N1ql",
-                "MySql",
-                "MariaDb",
-                "Db2",
-            ])
+            .help("SQL 方言")
+            .value_parser(SqlLanguage::ALL.map(SqlLanguage::as_str))
             .default_value("Sql"),
     )
     .arg(
@@ -81,4 +71,64 @@ fn parse_indent(value: Option<&str>) -> Result<Indentation, CliError> {
 fn parse_language(value: Option<&str>) -> Result<SqlLanguage, CliError> {
     let raw = value.unwrap_or("Sql");
     SqlLanguage::parse(raw).ok_or_else(|| CliError::new(format!("未知方言: {raw}")))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use clap::Command;
+
+    fn command() -> Command {
+        (cli_tool().configure)(Command::new("sqlFormatter"))
+    }
+
+    #[test]
+    fn language_parser_accepts_all_dialects_and_default() {
+        command()
+            .try_get_matches_from(["sqlFormatter", "-i", "select 1"])
+            .expect("default language should be Sql");
+        for lang in SqlLanguage::ALL {
+            command()
+                .try_get_matches_from([
+                    "sqlFormatter",
+                    "-i",
+                    "select 1",
+                    "--language",
+                    lang.as_str(),
+                ])
+                .unwrap_or_else(|e| panic!("{} should be accepted: {e}", lang.as_str()));
+        }
+    }
+
+    #[test]
+    fn language_parser_rejects_unknown_dialect() {
+        for name in ["Oracle", "sql", "Postgres"] {
+            let err = command()
+                .try_get_matches_from(["sqlFormatter", "-i", "select 1", "--language", name])
+                .expect_err(name);
+            let rendered = err.to_string();
+            assert!(
+                rendered.contains(name),
+                "CLI must reject {name} clearly, got: {rendered}"
+            );
+        }
+        assert!(
+            parse_language(Some("Oracle"))
+                .unwrap_err()
+                .message
+                .contains("未知方言")
+        );
+    }
+
+    #[test]
+    fn leading_comma_flag_is_accepted() {
+        let matches = command()
+            .try_get_matches_from(["sqlFormatter", "-i", "select 1", "--leadingComma"])
+            .expect("CLI --leadingComma should be accepted");
+        assert!(matches.get_flag("leadingComma"));
+        let matches = command()
+            .try_get_matches_from(["sqlFormatter", "-i", "select 1"])
+            .expect("leadingComma defaults to off");
+        assert!(!matches.get_flag("leadingComma"));
+    }
 }

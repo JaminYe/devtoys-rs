@@ -1,13 +1,14 @@
 use crate::slot::ToolView;
 use crate::ui;
 
-use super::{apply, stats, Operation, TextStats};
+use super::{apply, stats, Operation, RestoreBuffer, TextStats};
 
 pub struct TextAnalyzerView {
     input: String,
     stats: TextStats,
     cursor_line: usize,
     cursor_col: usize,
+    restore: RestoreBuffer,
 }
 
 impl TextAnalyzerView {
@@ -17,6 +18,7 @@ impl TextAnalyzerView {
             stats: stats(""),
             cursor_line: 1,
             cursor_col: 1,
+            restore: RestoreBuffer::default(),
         }
     }
 
@@ -25,9 +27,17 @@ impl TextAnalyzerView {
     }
 
     fn apply_op(&mut self, op: Operation) {
+        self.restore.on_transform(&self.input);
         let mut rng = rand::thread_rng();
         self.input = apply(&self.input, &[op], &mut rng);
         self.refresh_stats();
+    }
+
+    fn apply_restore(&mut self) {
+        if let Some(text) = self.restore.restore() {
+            self.input = text;
+            self.refresh_stats();
+        }
     }
 }
 
@@ -80,6 +90,12 @@ impl ToolView for TextAnalyzerView {
                 }
             }
             ui::copy_button(ui, Some(self.input.as_str()));
+            if ui
+                .add_enabled(self.restore.can_restore(), egui::Button::new("还原"))
+                .clicked()
+            {
+                self.apply_restore();
+            }
         });
         let cursor_line = self.cursor_line;
         let cursor_col = self.cursor_col;
@@ -88,9 +104,9 @@ impl ToolView for TextAnalyzerView {
             ui,
             |ui| {
                 ui.vertical(|ui| {
-                    ui.label("输入");
+                    ui.label(ui::t(ui, "common.input"));
                     input_changed =
-                        ui::fill_code(ui, "text-in", &mut self.input, "粘贴或输入文本", true);
+                        ui::fill_code(ui, "text-in", &mut self.input, ui::t(ui, "common.input"), true);
                     let id = ui.id().with(egui::Id::new("text-in"));
                     if let Some(state) = egui::TextEdit::load_state(ui.ctx(), id) {
                         if let Some(range) = state.cursor.char_range() {
@@ -107,12 +123,12 @@ impl ToolView for TextAnalyzerView {
                     let s = &self.stats;
                     stat_row(ui, "选区行", &format!("{cursor_line}"));
                     stat_row(ui, "选区列", &format!("{cursor_col}"));
-                    stat_row(ui, "字节", &format!("{}", s.bytes));
-                    stat_row(ui, "字符", &format!("{}", s.chars));
-                    stat_row(ui, "词", &format!("{}", s.words));
+                    stat_row(ui, ui::t(ui, "text_analyzer.bytes"), &format!("{}", s.bytes));
+                    stat_row(ui, ui::t(ui, "text_analyzer.characters"), &format!("{}", s.chars));
+                    stat_row(ui, ui::t(ui, "text_analyzer.words"), &format!("{}", s.words));
                     stat_row(ui, "句", &format!("{}", s.sentences));
                     stat_row(ui, "段", &format!("{}", s.paragraphs));
-                    stat_row(ui, "行", &format!("{}", s.lines));
+                    stat_row(ui, ui::t(ui, "text_analyzer.lines"), &format!("{}", s.lines));
                     stat_row(ui, "换行", s.eol.as_str());
                     ui.add_space(8.0);
                     ui.label("词频");
@@ -128,13 +144,46 @@ impl ToolView for TextAnalyzerView {
             },
         );
         if input_changed {
+            self.restore.on_user_edit(&self.input);
             self.refresh_stats();
         }
     }
 
     fn on_data_received(&mut self, payload: &str) {
         self.input = payload.to_string();
+        self.restore.on_user_edit(payload);
         self.refresh_stats();
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::slot::ToolView;
+
+    #[test]
+    fn persistable_options_are_none() {
+        let mut view = TextAnalyzerView::new();
+        view.input = "Hello World".into();
+        view.refresh_stats();
+        assert!(view.persistable_options().is_none());
+        view.restore_options(&serde_json::json!({ "input": "stolen" }));
+        assert_eq!(view.input, "Hello World");
+        assert!(view.persistable_options().is_none());
+    }
+
+    #[test]
+    fn test_text_analyzer_i18n_keys() {
+        let keys = [
+            ("text_analyzer.characters", "字符数", "Characters"),
+            ("text_analyzer.words", "词数", "Words"),
+            ("text_analyzer.lines", "行数", "Lines"),
+            ("text_analyzer.bytes", "字节数", "Bytes"),
+        ];
+        for (key, zh, en) in keys {
+            assert_eq!(devtoys_api::t(key, devtoys_api::Language::ZhCn), zh);
+            assert_eq!(devtoys_api::t(key, devtoys_api::Language::EnUs), en);
+        }
     }
 }
 

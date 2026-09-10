@@ -27,11 +27,7 @@ impl ManualRuntime {
         let _ = jobs[job].tx.send(DetectionResult {
             generation: jobs[job].gen,
             completed_at: *self.now.borrow(),
-            recommendations: vec![Recommendation {
-                tool_id: "JsonFormatter".into(),
-                data_type: "json".into(),
-                payload: payload.into(),
-            }],
+            recommendations: vec![Recommendation::new("JsonFormatter", "json", payload)],
         });
     }
 }

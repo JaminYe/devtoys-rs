@@ -2,7 +2,7 @@ use clap::{Arg, ArgAction, ArgMatches, Command};
 
 use crate::cli::{write_output, CliError, CliTool};
 
-use super::{checksum_matches, compute_hash, HashAlgorithm, ID};
+use super::{checksum_matches_input, compute_hash, HashAlgorithm, ID};
 
 pub fn cli_tool() -> CliTool {
     CliTool {
@@ -45,7 +45,7 @@ fn configure(cmd: Command) -> Command {
         Arg::new("checksum")
             .short('c')
             .long("checksum")
-            .help("期望校验和（大小写不敏感）"),
+            .help("期望校验和或校验和文件路径（大小写不敏感）"),
     )
     .arg(
         Arg::new("as-file")
@@ -74,7 +74,7 @@ fn run(matches: &ArgMatches) -> Result<(), CliError> {
         .map_err(|err| CliError::new(err.to_string()))?;
     write_output(None, &hex)?;
     if let Some(expected) = matches.get_one::<String>("checksum") {
-        if !checksum_matches(&hex, expected) {
+        if !checksum_matches_input(&hex, expected) {
             return Err(CliError::new("校验和不匹配"));
         }
     }

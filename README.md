@@ -14,14 +14,14 @@
 
 | 分类 | 工具 |
 |------|------|
-| 编解码 | Base64 文本/图片、URL、HTML 实体、转义字符、GZip |
+| 编解码 | Base64 文本/图片、URL、转义字符 |
 | 加密校验 | MD5 / SHA1 / SHA256 哈希、HMAC、密码生成 |
 | 格式化 | JSON / XML / SQL 格式化 |
 | 转换 | JSON ⇄ YAML、日期时间、进制转换 |
-| 解析器 | JWT、Cron 表达式、JSONPath、XSD 校验 |
-| 图片 | 二维码生成/识别、图片格式转换、色觉模拟 |
-| 文本 | 文本对比、列表对比、文本统计、Lorem Ipsum、Markdown 预览 |
-| 其他 | X.509 证书解析、UUID 生成 |
+| 解析器 | JWT、Cron 表达式、JSONPath |
+| 图片 | 图片格式转换 |
+| 文本 | 文本对比、列表对比、文本统计、Markdown 预览 |
+| 其他 | UUID 生成 |
 
 ## 📦 构建
 

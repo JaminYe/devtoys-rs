@@ -1,5 +1,20 @@
+use std::path::Path;
+
 use base64::engine::general_purpose::STANDARD;
 use base64::Engine;
+
+const IMAGE_FILE_EXTENSIONS: &[&str] = &["bmp", "gif", "ico", "jpeg", "jpg", "png", "svg", "webp"];
+const UTF8_BOM: &[u8] = &[0xEF, 0xBB, 0xBF];
+
+pub fn is_image_file_path(path: &Path) -> bool {
+    path.extension()
+        .and_then(|ext| ext.to_str())
+        .is_some_and(|ext| {
+            IMAGE_FILE_EXTENSIONS
+                .iter()
+                .any(|want| ext.eq_ignore_ascii_case(want))
+        })
+}
 
 #[derive(Debug, thiserror::Error, PartialEq, Eq)]
 pub enum Base64ImageError {
@@ -91,7 +106,47 @@ fn sniff_mime(bytes: &[u8]) -> Option<(&'static str, &'static str)> {
     if bytes.len() >= 4 && bytes[0] == 0 && bytes[1] == 0 && bytes[2] == 1 && bytes[3] == 0 {
         return Some(("image/x-icon", "ICO"));
     }
+    if is_svg(bytes) {
+        return Some(("image/svg+xml", "SVG"));
+    }
     None
+}
+
+fn is_svg(bytes: &[u8]) -> bool {
+    let bytes = bytes.strip_prefix(UTF8_BOM).unwrap_or(bytes);
+    let Ok(text) = std::str::from_utf8(bytes) else {
+        return false;
+    };
+    let trimmed = text.trim();
+    if trimmed.is_empty() {
+        return false;
+    }
+    let lower = trimmed.to_ascii_lowercase();
+    if svg_tag_at(lower.as_bytes(), 0) {
+        return true;
+    }
+    if !lower.starts_with("<?xml") {
+        return false;
+    }
+    let haystack = lower.as_bytes();
+    let mut i = 0;
+    while i + 4 <= haystack.len() {
+        if svg_tag_at(haystack, i) {
+            return true;
+        }
+        i += 1;
+    }
+    false
+}
+
+fn svg_tag_at(haystack: &[u8], i: usize) -> bool {
+    if i + 4 > haystack.len() || &haystack[i..i + 4] != b"<svg" {
+        return false;
+    }
+    match haystack.get(i + 4) {
+        None => true,
+        Some(b) => matches!(*b, b' ' | b'\t' | b'\n' | b'\r' | b'/' | b'>'),
+    }
 }
 
 #[cfg(test)]
@@ -125,5 +180,73 @@ mod tests {
             !message.contains("not-an-image"),
             "error must not include user input"
         );
+    }
+
+    #[test]
+    fn image_file_extensions_match_known_types_including_svg() {
+        for path in [
+            "a.png", "a.PNG", "a.jpg", "a.jpeg", "a.gif", "a.bmp", "a.webp", "a.ico", "a.svg",
+            "a.SVG",
+        ] {
+            assert!(is_image_file_path(Path::new(path)), "{path}");
+        }
+        for path in ["a.txt", "a.tga", "a.tiff", "a", "a.png.txt"] {
+            assert!(!is_image_file_path(Path::new(path)), "{path}");
+        }
+    }
+
+    const MINIMAL_SVG: &[u8] = b"<svg xmlns=\"http://www.w3.org/2000/svg\"></svg>";
+
+    #[test]
+    fn svg_encode_decode_roundtrip() {
+        let encoded = encode_bytes(MINIMAL_SVG);
+        let got = decode_base64(&encoded).unwrap();
+        assert_eq!(got, MINIMAL_SVG);
+    }
+
+    #[test]
+    fn svg_data_uri_decodes_to_original_bytes() {
+        let encoded = encode_bytes(MINIMAL_SVG);
+        let uri = format!("data:image/svg+xml;base64,{encoded}");
+        let got = decode_base64(&uri).unwrap();
+        assert_eq!(got, MINIMAL_SVG);
+    }
+
+    #[test]
+    fn svg_file_path_is_image() {
+        assert!(is_image_file_path(Path::new("a.svg")));
+    }
+
+    #[test]
+    fn inspect_svg_labels_without_raster_dimensions() {
+        let info = inspect_image(MINIMAL_SVG);
+        assert_eq!(info.mime, "image/svg+xml");
+        assert_eq!(info.label, "SVG");
+        assert_eq!(info.width, None);
+        assert_eq!(info.height, None);
+        assert_eq!(info.summary(), format!("SVG · {} 字节", MINIMAL_SVG.len()));
+    }
+
+    #[test]
+    fn xml_declaration_svg_decodes() {
+        let svg = b"<?xml version=\"1.0\" encoding=\"UTF-8\"?><svg xmlns=\"http://www.w3.org/2000/svg\"></svg>";
+        let got = decode_base64(&encode_bytes(svg)).unwrap();
+        assert_eq!(got, svg);
+    }
+
+    #[test]
+    fn bom_prefixed_svg_decodes() {
+        let mut bytes = UTF8_BOM.to_vec();
+        bytes.extend_from_slice(MINIMAL_SVG);
+        let got = decode_base64(&encode_bytes(&bytes)).unwrap();
+        assert_eq!(got, bytes);
+    }
+
+    #[test]
+    fn arbitrary_xml_is_invalid_image() {
+        let xml = b"<?xml version=\"1.0\"?><root/>";
+        let err = decode_base64(&encode_bytes(xml)).unwrap_err();
+        assert_eq!(err, Base64ImageError::InvalidImage);
+        assert_eq!(err.to_string(), "非法图片");
     }
 }

@@ -21,9 +21,6 @@ impl Detector for YamlDetector {
         if !looks_like_yaml(value) {
             return None;
         }
-        Some(DetectedPayload {
-            type_name: TYPE_YAML.to_string(),
-            value: value.to_string(),
-        })
+        Some(DetectedPayload::new(TYPE_YAML, value))
     }
 }

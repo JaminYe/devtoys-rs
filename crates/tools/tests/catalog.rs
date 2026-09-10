@@ -4,21 +4,21 @@ use devtoys_api::{GroupId, JSON_FORMATTER_ID, SETTINGS_ID};
 use devtoys_tools::open_gui_tool;
 use devtoys_tools::{all_cli_tools, all_tools, build_cli, default_catalog, ToolCatalog};
 #[test]
-fn thirty_business_tools_are_registered() {
-    assert_eq!(all_tools().len(), 30);
+fn twenty_three_business_tools_are_registered() {
+    assert_eq!(all_tools().len(), 23);
 }
 
 #[test]
 fn default_catalog_direct_access() {
     let catalog = default_catalog();
-    assert_eq!(catalog.tools().len(), 30);
-    assert_eq!(catalog.len(), 30);
+    assert_eq!(catalog.tools().len(), 23);
+    assert_eq!(catalog.len(), 23);
     assert!(!catalog.is_empty());
-    assert_eq!(catalog.all_metadata().len(), 30);
-    assert_eq!(catalog.all_cli().len(), 26);
+    assert_eq!(catalog.all_metadata().len(), 23);
+    assert_eq!(catalog.all_cli().len(), 19);
     assert!(!catalog.all_detectors().is_empty());
 
-    assert_eq!(ToolCatalog::default_catalog().len(), 30);
+    assert_eq!(ToolCatalog::default_catalog().len(), 23);
 }
 
 #[cfg(feature = "gui")]
@@ -69,6 +69,22 @@ fn cli_commands_share_gui_ids() {
             cmd.name
         );
     }
+}
+
+#[test]
+fn base64_image_registers_file_detector() {
+    let catalog = default_catalog();
+    let tool = catalog
+        .all_metadata()
+        .into_iter()
+        .find(|tool| tool.id.as_str() == "Base64ImageEncoderDecoder")
+        .expect("Base64 image tool");
+    assert!(tool.accepted_types.contains(&"Base64ImageFile"));
+    assert!(catalog
+        .all_detectors()
+        .iter()
+        .any(|detector| detector.data_type().name == "Base64ImageFile"
+            && detector.data_type().parent == Some("file")));
 }
 
 #[test]

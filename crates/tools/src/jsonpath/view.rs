@@ -56,20 +56,20 @@ impl ToolView for JsonPathView {
                 |ui| {
                     json_changed = ui::labeled_code(
                         ui,
-                        "JSON",
+                        ui::t(ui, "common.input"),
                         "jsonpath-json",
                         &mut self.json,
-                        "粘贴 JSON",
+                        ui::t(ui, "common.paste"),
                         true,
                     );
                 },
                 |ui| {
                     ui.vertical(|ui| {
-                        ui.label("JSONPath");
+                        ui.label(ui::t(ui, "jsonpath.expression"));
                         path_changed =
                             ui::singleline(ui, "jsonpath-path", &mut self.path, "$.path");
-                        ui.label("匹配结果");
-                        ui::fill_code(ui, "jsonpath-out", &mut self.output, "匹配结果", false);
+                        ui.label(ui::t(ui, "common.output"));
+                        ui::fill_code(ui, "jsonpath-out", &mut self.output, ui::t(ui, "common.output"), false);
                     });
                 },
             );
@@ -88,5 +88,36 @@ impl ToolView for JsonPathView {
     fn on_data_received(&mut self, payload: &str) {
         self.json = payload.to_string();
         self.reeval();
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::slot::ToolView;
+
+    #[test]
+    fn persistable_options_are_none() {
+        let mut view = JsonPathView::new();
+        view.json = r#"{"a":1}"#.into();
+        view.path = "$.a".into();
+        view.output = "1".into();
+        assert!(view.persistable_options().is_none());
+        view.restore_options(&serde_json::json!({ "path": "$.stolen", "json": "{}" }));
+        assert_eq!(view.json, r#"{"a":1}"#);
+        assert_eq!(view.path, "$.a");
+        assert!(view.persistable_options().is_none());
+    }
+
+    #[test]
+    fn test_i18n_keys() {
+        assert_eq!(
+            devtoys_api::t("jsonpath.expression", devtoys_api::Language::ZhCn),
+            "JSONPath 表达式"
+        );
+        assert_eq!(
+            devtoys_api::t("jsonpath.expression", devtoys_api::Language::EnUs),
+            "JSONPath expression"
+        );
     }
 }

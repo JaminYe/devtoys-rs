@@ -9,7 +9,7 @@ use crate::cli::CliTool;
 use crate::slot::ToolHandle;
 pub use cli::cli_tool;
 use devtoys_api::{GroupId, ToolId, ToolMetadata, TYPE_TEXT};
-pub use helper::{apply, stats, Operation, TextStats, OPERATION_NAMES};
+pub use helper::{apply, stats, Operation, RestoreBuffer, TextStats, OPERATION_NAMES};
 #[cfg(feature = "gui")]
 pub use view::TextAnalyzerView;
 

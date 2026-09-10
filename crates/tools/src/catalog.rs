@@ -25,11 +25,19 @@ pub trait Tool: Send + Sync {
     fn create_view(&self) -> Option<ToolHandle> {
         None
     }
+
+    /// Returns whether this tool supports Compact Overlay (picture-in-picture) mode.
+    ///
+    /// Tools that are too visually dense or require wide two-column diff views
+    /// (e.g. Text Compare, Markdown Preview) can override this to return false.
+    fn supports_compact_overlay(&self) -> bool {
+        self.metadata().supports_compact_overlay()
+    }
 }
 
 static DEFAULT_CATALOG: LazyLock<ToolCatalog> = LazyLock::new(build_default_catalog);
 
-/// Returns the global shared default [`ToolCatalog`] containing all 30 business tools.
+/// Returns the global shared default [`ToolCatalog`] containing all 23 business tools.
 pub fn default_catalog() -> &'static ToolCatalog {
     &DEFAULT_CATALOG
 }
@@ -112,6 +120,26 @@ impl ToolCatalog {
         }
         None
     }
+
+    /// Returns whether a tool by its unique ID supports compact overlay mode.
+    pub fn supports_compact_overlay(&self, id: &str) -> bool {
+        for tool in &self.tools {
+            if tool.metadata().id.as_str() == id {
+                return tool.supports_compact_overlay();
+            }
+        }
+        false
+    }
+
+    /// The 23 builtins plus `extensions`. Duplicate ids are not filtered here;
+    /// [`crate::load_extensions`] already skips builtin collisions.
+    pub fn with_extensions(extensions: Vec<Box<dyn Tool>>) -> Self {
+        let mut catalog = build_default_catalog();
+        for tool in extensions {
+            catalog.register_boxed(tool);
+        }
+        catalog
+    }
 }
 
 impl Default for ToolCatalog {
@@ -120,7 +148,7 @@ impl Default for ToolCatalog {
     }
 }
 
-/// Builds the default [`ToolCatalog`] containing all 30 business tools.
+/// Builds the default [`ToolCatalog`] containing all 23 business tools.
 fn build_default_catalog() -> ToolCatalog {
     let mut catalog = ToolCatalog::empty();
 
@@ -131,24 +159,17 @@ fn build_default_catalog() -> ToolCatalog {
     catalog.register(crate::number_base::NumberBaseTool);
     catalog.register(crate::base64_text::Base64TextTool);
     catalog.register(crate::base64_image::Base64ImageTool);
-    catalog.register(crate::certificate::CertificateTool);
-    catalog.register(crate::gzip::GzipTool);
-    catalog.register(crate::html::HtmlTool);
     catalog.register(crate::jwt::JwtTool);
-    catalog.register(crate::qrcode::QrcodeTool);
     catalog.register(crate::url::UrlTool);
     catalog.register(crate::json_formatter::JsonFormatterTool);
     catalog.register(crate::sql_formatter::SqlFormatterTool);
     catalog.register(crate::xml_formatter::XmlFormatterTool);
     catalog.register(crate::hash_checksum::HashChecksumTool);
-    catalog.register(crate::lorem_ipsum::LoremIpsumTool);
     catalog.register(crate::password::PasswordTool);
     catalog.register(crate::uuid_gen::UuidGenTool);
-    catalog.register(crate::color_blindness::ColorBlindnessTool);
     catalog.register(crate::image_converter::ImageConverterTool);
     catalog.register(crate::jsonpath::JsonpathTool);
     catalog.register(crate::regex_tester::RegexTesterTool);
-    catalog.register(crate::xml_xsd::XmlXsdTool);
     catalog.register(crate::text_analyzer::TextAnalyzerTool);
     catalog.register(crate::text_compare::TextCompareTool);
     catalog.register(crate::escape_unescape::EscapeUnescapeTool);
@@ -179,13 +200,13 @@ mod tests {
     }
 
     #[test]
-    fn default_catalog_has_thirty_tools() {
+    fn default_catalog_has_expected_tools() {
         let catalog = default_catalog();
-        assert_eq!(catalog.len(), 30);
-        assert_eq!(catalog.tools().len(), 30);
-        assert_eq!(catalog.all_metadata().len(), 30);
-        assert_eq!(catalog.all_cli().len(), 26);
-        assert_eq!(ToolCatalog::default_catalog().len(), 30);
+        assert_eq!(catalog.len(), 23);
+        assert_eq!(catalog.tools().len(), 23);
+        assert_eq!(catalog.all_metadata().len(), 23);
+        assert_eq!(catalog.all_cli().len(), 19);
+        assert_eq!(ToolCatalog::default_catalog().len(), 23);
     }
 
     #[test]
@@ -220,11 +241,20 @@ mod tests {
     #[test]
     fn all_tools_registered_natively() {
         let catalog = default_catalog();
-        assert_eq!(catalog.len(), 30);
+        assert_eq!(catalog.len(), 23);
         for tool in catalog.tools() {
             let meta = tool.metadata();
             assert!(!meta.id.as_str().is_empty());
             assert!(!meta.display_name.is_empty());
         }
+    }
+
+    #[test]
+    fn compact_overlay_support_reflects_tool_preferences() {
+        let catalog = default_catalog();
+        assert!(catalog.supports_compact_overlay("JsonFormatter"));
+        assert!(!catalog.supports_compact_overlay("TextCompare"));
+        assert!(!catalog.supports_compact_overlay("MarkdownPreview"));
+        assert!(!catalog.supports_compact_overlay("NonExistentToolId"));
     }
 }

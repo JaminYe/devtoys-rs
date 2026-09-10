@@ -6,7 +6,7 @@ use crate::catalog::Tool;
 #[cfg(feature = "gui")]
 use crate::slot::ToolHandle;
 use devtoys_api::{GroupId, ToolId, ToolMetadata};
-pub use helper::{diff_lines, DiffMode, DiffTag};
+pub use helper::{diff_lines, diff_rows, DiffLine, DiffMode, DiffRow, DiffSpan, DiffTag};
 #[cfg(feature = "gui")]
 pub use view::TextCompareView;
 
@@ -35,6 +35,10 @@ pub struct TextCompareTool;
 impl Tool for TextCompareTool {
     fn metadata(&self) -> ToolMetadata {
         metadata()
+    }
+
+    fn supports_compact_overlay(&self) -> bool {
+        false
     }
 
     #[cfg(feature = "gui")]

@@ -9,15 +9,17 @@ mod registry;
 mod settings_store;
 mod state;
 
-pub use clipboard::{rgba_to_png, ClipboardSource, InMemoryClipboard, SystemClipboard};
+pub use clipboard::{
+    files_from_os_paths, parse_cf_hdrop, rgba_to_png, ClipboardSource, InMemoryClipboard,
+    SystemClipboard,
+};
 pub use coordinator::DetectionCoordinator;
 pub use detection::{
     validate, DetectOptions, DetectionAssemblyIssue, DetectionEngine, Recommendation,
 };
 pub use detectors::{
     Base64ImageDetector, Base64TextDetector, DateDetector, FileDetector, FilesDetector,
-    GzipDetector, ImageDetector, ImageFileDetector, JsonArrayDetector, JsonDetector, TextDetector,
-    XmlDetector, XsdDetector,
+    ImageDetector, ImageFileDetector, JsonArrayDetector, JsonDetector, TextDetector, XmlDetector,
 };
 pub use error::CoreError;
 pub use registry::{SearchOutcome, ToolRegistry};
@@ -33,10 +35,8 @@ pub fn all_detectors() -> Vec<Box<dyn Detector>> {
         Box::new(JsonDetector),
         Box::new(JsonArrayDetector),
         Box::new(XmlDetector),
-        Box::new(XsdDetector),
         Box::new(Base64TextDetector),
         Box::new(Base64ImageDetector),
-        Box::new(GzipDetector),
         Box::new(DateDetector),
         Box::new(ImageDetector),
         Box::new(FilesDetector),

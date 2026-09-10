@@ -30,32 +30,31 @@ dirs = "6"
 eframe = { version = "0.36", default-features = false, features = ["accesskit", "glow", "default_fonts", "wayland", "x11"] }
 egui = "0.36"
 egui_extras = { version = "0.36", features = ["image", "svg"] }
-flate2 = "1"
 hex = "0.4"
 log = "0.4"
 memmap2 = "0.9"
 hmac = "0.12"
-html-escape = "0.2"
 image = "0.25"
 jsonpath-rust = "0.7"
 jsonwebtoken = "9"
 md-5 = "0.10"
+p521 = { version = "0.13", features = ["ecdsa", "getrandom"] }
 percent-encoding = "2"
 pulldown-cmark = "0.13"
-qrcode = "0.14"
 quick-xml = "0.37"
 rand = "0.8"
 regex = "1"
-rqrr = "0.8"
+rfd = "0.15"
 serde = { version = "1", features = ["derive"] }
-serde_json = { version = "1", features = ["preserve_order"] }
+serde_json = { version = "1", features = ["preserve_order", "arbitrary_precision"] }
 serde_yaml = "0.9"
 sha1 = "0.10"
 skrifa = "0.44"
 sha2 = "0.10"
 similar = "2"
-sqlformat = "0.3"
+syntect = "5"
 tempfile = "3"
 thiserror = "2"
+toml = "0.8"
+ureq = { version = "2", default-features = false, features = ["tls"] }
 uuid = { version = "1", features = ["v1", "v4", "v7", "std"] }
-x509-parser = "0.16"

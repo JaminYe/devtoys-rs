@@ -1,4 +1,13 @@
-use percent_encoding::{percent_decode_str, utf8_percent_encode, NON_ALPHANUMERIC};
+use percent_encoding::{percent_decode_str, utf8_percent_encode, AsciiSet, NON_ALPHANUMERIC};
+
+/// RFC 3986 §2.3 Unreserved Characters:
+/// unreserved = ALPHA / DIGIT / "-" / "." / "_" / "~"
+/// All other characters are percent-encoded.
+const RFC3986_ENCODE_SET: &AsciiSet = &NON_ALPHANUMERIC
+    .remove(b'-')
+    .remove(b'_')
+    .remove(b'.')
+    .remove(b'~');
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub enum Conversion {
@@ -24,7 +33,7 @@ pub enum UrlError {
 }
 
 pub fn encode(input: &str) -> String {
-    utf8_percent_encode(input, NON_ALPHANUMERIC).to_string()
+    utf8_percent_encode(input, RFC3986_ENCODE_SET).to_string()
 }
 
 pub fn decode(input: &str) -> Result<String, UrlError> {
@@ -137,5 +146,38 @@ mod tests {
         assert!(got.contains("%20"));
         assert!(got.contains("%0A") || got.contains("%0a"));
         assert!(!got.contains('\n'));
+    }
+
+    #[test]
+    fn encode_unreserved_characters_preserved() {
+        assert_eq!(encode("a-b_c.d~e"), "a-b_c.d~e");
+        assert_eq!(
+            convert("a-b_c.d~e", Conversion::Encode, false).unwrap(),
+            "a-b_c.d~e"
+        );
+        assert_eq!(
+            encode("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_.~"),
+            "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_.~"
+        );
+    }
+
+    #[test]
+    fn encode_spaces_reserved_and_unicode() {
+        assert_eq!(encode("hello world"), "hello%20world");
+        assert_eq!(encode(":/?#[]@!$&'()*+,;="), "%3A%2F%3F%23%5B%5D%40%21%24%26%27%28%29%2A%2B%2C%3B%3D");
+        assert_eq!(encode("你好"), "%E4%BD%A0%E5%A5%BD");
+        assert_eq!(decode("%E4%BD%A0%E5%A5%BD").unwrap(), "你好");
+    }
+
+    #[test]
+    fn multiline_preserves_unreserved_and_encodes_others() {
+        let input = "a-b_c.d~e\nhello world\n:/?#\n测试";
+        let encoded = convert(input, Conversion::Encode, true).unwrap();
+        assert_eq!(
+            encoded,
+            "a-b_c.d~e\nhello%20world\n%3A%2F%3F%23\n%E6%B5%8B%E8%AF%95"
+        );
+        let decoded = convert(&encoded, Conversion::Decode, true).unwrap();
+        assert_eq!(decoded, input);
     }
 }

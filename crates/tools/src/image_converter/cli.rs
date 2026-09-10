@@ -3,8 +3,8 @@ use std::path::{Path, PathBuf};
 
 use clap::{Arg, ArgMatches, Command};
 
+use super::is_static_image_path;
 use crate::cli::{CliError, CliTool};
-use crate::color_blindness::is_static_image_path;
 
 use super::execute::convert_paths;
 use super::{static_images_in_dir, ImageTargetFormat, ID};

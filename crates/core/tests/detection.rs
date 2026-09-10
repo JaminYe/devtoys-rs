@@ -2,13 +2,12 @@ use std::sync::atomic::AtomicBool;
 
 use devtoys_api::{
     DetectedPayload, Detector, GroupId, RawData, ToolId, ToolMetadata, JSON_FORMATTER_ID,
-    TYPE_DATE, TYPE_FILE, TYPE_FILES, TYPE_IMAGE, TYPE_IMAGE_FILE, TYPE_JSON, TYPE_JSON_ARRAY,
-    TYPE_TEXT, TYPE_XML, TYPE_XSD,
+    TYPE_BASE64_IMAGE, TYPE_BASE64_TEXT, TYPE_DATE, TYPE_FILE, TYPE_FILES, TYPE_IMAGE,
+    TYPE_IMAGE_FILE, TYPE_JSON, TYPE_JSON_ARRAY, TYPE_TEXT, TYPE_XML,
 };
 use devtoys_core::{
     all_detectors, Base64ImageDetector, Base64TextDetector, DateDetector, DetectOptions,
-    DetectionEngine, GzipDetector, JsonArrayDetector, JsonDetector, Recommendation, TextDetector,
-    XmlDetector, XsdDetector,
+    DetectionEngine, JsonArrayDetector, JsonDetector, Recommendation, TextDetector, XmlDetector,
 };
 
 const JSON_TYPES: &[&str] = &[TYPE_JSON];
@@ -59,24 +58,11 @@ fn detect(
 }
 
 fn text_parent(s: &str) -> DetectedPayload {
-    DetectedPayload {
-        type_name: TYPE_TEXT.to_string(),
-        value: s.to_string(),
-    }
+    DetectedPayload::new(TYPE_TEXT, s)
 }
 
 fn json_parent(s: &str) -> DetectedPayload {
-    DetectedPayload {
-        type_name: TYPE_JSON.to_string(),
-        value: s.to_string(),
-    }
-}
-
-fn xml_parent(s: &str) -> DetectedPayload {
-    DetectedPayload {
-        type_name: TYPE_XML.to_string(),
-        value: s.to_string(),
-    }
+    DetectedPayload::new(TYPE_JSON, s)
 }
 
 fn json_detected(input: &str) -> bool {
@@ -360,37 +346,28 @@ fn engine_xml_is_xml_not_json() {
 }
 
 #[test]
-fn xsd_detector_requires_schema_marker_and_xml_parent() {
-    let xsd = r#"<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"><xs:element name="a" type="xs:string"/></xs:schema>"#;
-    assert!(XsdDetector
-        .detect(&RawData::text(xsd), Some(&xml_parent(xsd)))
-        .is_some());
-    assert!(XsdDetector.detect(&RawData::text(xsd), None).is_none());
-    assert!(XsdDetector
-        .detect(&RawData::text("<a></a>"), Some(&xml_parent("<a></a>")))
-        .is_none());
-}
-
-#[test]
-fn engine_xsd_is_xsd_child_of_xml() {
+fn xsd_document_detects_as_xml_not_xsd() {
     let input = r#"<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"><xs:element name="a" type="xs:string"/></xs:schema>"#;
+    assert!(XmlDetector
+        .detect(&RawData::text(input), Some(&text_parent(input)))
+        .is_some());
+
     let tools = vec![
-        meta("XsdTool", &[TYPE_XSD]),
+        meta("XsdTool", &["xsd"]),
         meta("XmlTool", &[TYPE_XML]),
         text_tool(),
     ];
     let recs = detect(&engine(&tools), input, true, None, true, false);
     assert_eq!(recs.len(), 1);
-    assert_eq!(recs[0].data_type, TYPE_XSD);
-    assert_eq!(recs[0].tool_id, "XsdTool");
+    assert_eq!(recs[0].data_type, TYPE_XML);
+    assert_eq!(recs[0].tool_id, "XmlTool");
 
     let recs = detect(&engine(&tools), input, false, None, true, false);
-    assert_eq!(
-        recs.iter()
-            .map(|r| r.data_type.as_str())
-            .collect::<Vec<_>>(),
-        vec![TYPE_XSD, TYPE_XML]
-    );
+    assert!(recs.iter().all(|r| r.data_type != "xsd"));
+    assert!(!recs.iter().any(|r| r.tool_id == "XsdTool"));
+    assert!(recs
+        .iter()
+        .any(|r| r.tool_id == "XmlTool" && r.data_type == TYPE_XML));
 }
 
 #[test]
@@ -466,6 +443,12 @@ fn engine_files_and_image_via_raw_data() {
     );
     assert_eq!(recs.len(), 1);
     assert_eq!(recs[0].data_type, TYPE_IMAGE);
+    assert_eq!(recs[0].payload, "image/png");
+    assert_eq!(
+        recs[0].bytes.as_deref(),
+        Some(&[0x89, 0x50, 0x4E, 0x47][..])
+    );
+    assert_eq!(recs[0].mime.as_deref(), Some("image/png"));
 
     let recs = detect_raw(
         &eng,
@@ -482,7 +465,36 @@ fn engine_files_and_image_via_raw_data() {
 }
 
 #[test]
-fn base64_text_gzip_and_image_detectors() {
+fn engine_file_paths_keep_spaces_chinese_and_missing() {
+    let tools = vec![
+        meta("FilesTool", &[TYPE_FILES]),
+        meta("FileTool", &[TYPE_FILE]),
+        meta("ImageFileTool", &[TYPE_IMAGE_FILE]),
+        meta("ImageTool", &[TYPE_IMAGE]),
+    ];
+    let eng = engine(&tools);
+
+    let spaced = r"C:\Users\图片\foo bar.png";
+    let recs = detect_raw(&eng, &RawData::Files(vec![spaced.into()]), true);
+    assert_eq!(recs.len(), 1);
+    assert_eq!(recs[0].data_type, TYPE_IMAGE_FILE);
+    assert_eq!(recs[0].payload, spaced);
+
+    let missing = r"C:\does not exist\gone.txt";
+    let recs = detect_raw(&eng, &RawData::Files(vec![missing.into()]), true);
+    assert_eq!(recs.len(), 1);
+    assert_eq!(recs[0].data_type, TYPE_FILE);
+    assert_eq!(recs[0].payload, missing);
+
+    let mixed = vec![r"D:\a.png".to_string(), r"D:\notes\说明.txt".to_string()];
+    let recs = detect_raw(&eng, &RawData::Files(mixed.clone()), true);
+    assert_eq!(recs.len(), 1);
+    assert_eq!(recs[0].data_type, TYPE_FILES);
+    assert_eq!(recs[0].payload, mixed.join("\n"));
+}
+
+#[test]
+fn base64_text_and_image_detectors() {
     let hello = "aGVsbG8gd29ybGQ=";
     assert!(Base64TextDetector
         .detect(&RawData::text(hello), Some(&text_parent(hello)))
@@ -497,11 +509,6 @@ fn base64_text_gzip_and_image_detectors() {
         .detect(&RawData::text("YWJj"), Some(&text_parent("YWJj")))
         .is_none());
 
-    let gzip = "H4sIAAAAAAAAC/NIzcnJBwCCidH3BQAAAA==";
-    assert!(GzipDetector
-        .detect(&RawData::text(gzip), Some(&text_parent(gzip)))
-        .is_some());
-
     let uri = "data:image/png;base64,iVBORw0KGgo=";
     assert!(Base64ImageDetector
         .detect(&RawData::text(uri), Some(&text_parent(uri)))
@@ -510,4 +517,54 @@ fn base64_text_gzip_and_image_detectors() {
     assert!(Base64ImageDetector
         .detect(&RawData::text(png), Some(&text_parent(png)))
         .is_some());
+}
+
+#[test]
+fn gzip_base64_does_not_produce_gzip_type() {
+    let gzip = "H4sIAAAAAAAAC/NIzcnJBwCCidH3BQAAAA==";
+    let tools = vec![
+        meta("GzipTool", &["gzip"]),
+        meta("Base64Tool", &[TYPE_BASE64_TEXT]),
+        text_tool(),
+    ];
+    let recs = detect(&engine(&tools), gzip, true, None, true, false);
+    assert!(recs.iter().all(|r| r.data_type != "gzip"));
+    assert!(!recs.iter().any(|r| r.tool_id == "GzipTool"));
+
+    let remaining = vec![meta("Base64Tool", &[TYPE_BASE64_TEXT]), text_tool()];
+    let recs = detect(&engine(&remaining), gzip, false, None, true, false);
+    assert!(!recs
+        .iter()
+        .any(|r| r.tool_id == "GzipTool" || r.data_type == "gzip"));
+}
+
+#[test]
+fn remaining_detectors_still_match_json_xml_and_png() {
+    assert!(json_detected("{}"));
+    assert!(XmlDetector
+        .detect(&RawData::text("<a></a>"), Some(&text_parent("<a></a>")))
+        .is_some());
+    let uri = "data:image/png;base64,iVBORw0KGgo=";
+    assert!(Base64ImageDetector
+        .detect(&RawData::text(uri), Some(&text_parent(uri)))
+        .is_some());
+
+    let tools = vec![
+        json_tool(),
+        meta("XmlTool", &[TYPE_XML]),
+        meta("ImageTool", &[TYPE_BASE64_IMAGE]),
+        text_tool(),
+    ];
+    let eng = engine(&tools);
+    let recs = detect(&eng, "{}", true, None, true, false);
+    assert_eq!(recs.len(), 1);
+    assert_eq!(recs[0].data_type, TYPE_JSON);
+
+    let recs = detect(&eng, "<a></a>", true, None, true, false);
+    assert_eq!(recs.len(), 1);
+    assert_eq!(recs[0].data_type, TYPE_XML);
+
+    let recs = detect(&eng, uri, true, None, true, false);
+    assert_eq!(recs.len(), 1);
+    assert_eq!(recs[0].data_type, TYPE_BASE64_IMAGE);
 }

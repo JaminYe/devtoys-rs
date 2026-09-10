@@ -28,10 +28,15 @@ pub struct CliTool {
 }
 
 pub fn build_cli() -> Command {
+    build_cli_from(crate::default_catalog())
+}
+
+/// Builds CLI subcommands from `catalog` (builtins and any loaded extensions).
+pub fn build_cli_from(catalog: &crate::ToolCatalog) -> Command {
     let mut cmd = Command::new("devtoys-cli")
         .about("DevToys CLI：调用工具 Helper，不启动 GUI")
         .subcommand_required(false);
-    for tool in crate::default_catalog().all_cli() {
+    for tool in catalog.all_cli() {
         let mut sub = Command::new(tool.name).about(tool.about);
         for alias in tool.aliases {
             sub = sub.visible_alias(*alias);
@@ -42,10 +47,15 @@ pub fn build_cli() -> Command {
 }
 
 pub fn run_cli(matches: &ArgMatches) -> Result<(), CliError> {
+    run_cli_from(crate::default_catalog(), matches)
+}
+
+/// Dispatches a parsed CLI invocation against `catalog`.
+pub fn run_cli_from(catalog: &crate::ToolCatalog, matches: &ArgMatches) -> Result<(), CliError> {
     let Some((name, sub)) = matches.subcommand() else {
         return Ok(());
     };
-    let tool = crate::default_catalog()
+    let tool = catalog
         .all_cli()
         .into_iter()
         .find(|tool| tool.name == name)

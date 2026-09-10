@@ -7,18 +7,22 @@ mod view;
 
 use crate::catalog::Tool;
 use crate::cli::CliTool;
-use crate::color_blindness::TYPE_STATIC_IMAGE_FILE;
 #[cfg(feature = "gui")]
 use crate::slot::ToolHandle;
 use devtoys_api::{Detector, GroupId, ToolId, ToolMetadata, TYPE_IMAGE};
 
 pub use cli::cli_tool;
-pub use detector::{StaticImageFilesDetector, TYPE_STATIC_IMAGE_FILES};
+pub use detector::{
+    is_static_image_path, StaticImageFileDetector, StaticImageFilesDetector,
+    TYPE_STATIC_IMAGE_FILE, TYPE_STATIC_IMAGE_FILES,
+};
 pub use execute::{
-    convert_paths, parse_paths, ConversionBatch, FailedConversion, SuccessfulConversion,
+    convert_memory, convert_paths, parse_paths, save_batch, save_one, ConversionBatch,
+    FailedConversion, SaveReport, SaveStatus, SavedItem, SuccessfulConversion,
 };
 pub use helper::{
-    convert_image, convert_image_named, static_images_in_dir, ImageConvertError, ImageTargetFormat,
+    convert_image, convert_image_from, convert_image_named, preview_rgba, static_images_in_dir,
+    ImageConvertError, ImageTargetFormat,
 };
 #[cfg(feature = "gui")]
 pub use view::ImageConverterView;
@@ -38,7 +42,10 @@ pub fn metadata() -> ToolMetadata {
 }
 
 pub fn detectors() -> Vec<Box<dyn Detector>> {
-    vec![Box::new(StaticImageFilesDetector)]
+    vec![
+        Box::new(StaticImageFileDetector),
+        Box::new(StaticImageFilesDetector),
+    ]
 }
 
 #[cfg(feature = "gui")]

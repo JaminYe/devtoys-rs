@@ -1,5 +1,4 @@
 mod helper;
-#[cfg(feature = "gui")]
 mod view;
 
 use crate::catalog::Tool;
@@ -7,7 +6,8 @@ use crate::catalog::Tool;
 use crate::slot::ToolHandle;
 use devtoys_api::{Detector, GroupId, ToolId, ToolMetadata};
 pub use helper::{
-    decode_jwt, encode_jwt, JwtAlgorithm, JwtDecodeOptions, JwtDecoded, JwtEncodeOptions, JwtError,
+    claims_table, decode_jwt, encode_jwt, JwtAlgorithm, JwtDecodeOptions, JwtDecoded,
+    JwtEncodeOptions, JwtError,
 };
 #[cfg(feature = "gui")]
 pub use view::JwtView;

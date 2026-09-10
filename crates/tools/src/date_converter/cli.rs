@@ -65,3 +65,39 @@ fn is_timestamp(value: &str) -> bool {
     let digits = t.strip_prefix('-').unwrap_or(t);
     !digits.is_empty() && digits.chars().all(|c| c.is_ascii_digit())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn round_trip_o_format_is_not_classified_as_timestamp() {
+        assert!(!is_timestamp("1970-01-01T00:00:00.0010000+00:00"));
+        assert!(!is_timestamp("0001-01-01T00:00:00.0000000+00:00"));
+        assert!(is_timestamp("1"));
+        assert!(is_timestamp("-1"));
+        assert!(is_timestamp("621355968000000000"));
+    }
+
+    #[test]
+    fn cli_path_keeps_millisecond_and_tick_precision() {
+        // CLI writes helper output to stdout/file unchanged.
+        let ms =
+            timestamp_to_datetime("1", TimestampFormat::Milliseconds, Some("UTC"), None).unwrap();
+        assert_eq!(ms, "1970-01-01T00:00:00.0010000+00:00");
+        assert!(is_timestamp("1"));
+        assert!(!is_timestamp(&ms));
+        assert_eq!(
+            datetime_to_timestamp(&ms, TimestampFormat::Milliseconds, Some("UTC"), None).unwrap(),
+            "1"
+        );
+
+        let year1 = timestamp_to_datetime("0", TimestampFormat::Ticks, Some("UTC"), None).unwrap();
+        assert_eq!(year1, "0001-01-01T00:00:00.0000000+00:00");
+        assert!(!is_timestamp(&year1));
+        assert_eq!(
+            datetime_to_timestamp(&year1, TimestampFormat::Ticks, Some("UTC"), None).unwrap(),
+            "0"
+        );
+    }
+}

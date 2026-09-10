@@ -38,3 +38,11 @@ pub struct ToolMetadata {
     pub favorable: bool,
     pub accepted_types: &'static [&'static str],
 }
+
+impl ToolMetadata {
+    /// Returns whether this tool supports compact overlay mode by default.
+    /// Visually dense tools (such as Text Compare and Markdown Preview) return false.
+    pub fn supports_compact_overlay(&self) -> bool {
+        self.id.as_str() != "TextCompare" && self.id.as_str() != "MarkdownPreview"
+    }
+}

@@ -53,3 +53,24 @@ fn run(matches: &ArgMatches) -> Result<(), CliError> {
         &result,
     )
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn cli_unescapes_known_and_preserves_unknown() {
+        let tool = cli_tool();
+        let cmd = (tool.configure)(Command::new("test"));
+        let matches = cmd.get_matches_from(["test", "-i", "hello\\q\\nworld\\", "-c", "Decode"]);
+        assert!((tool.run)(&matches).is_ok());
+    }
+
+    #[test]
+    fn cli_decode_invalid_sequence_returns_error() {
+        let tool = cli_tool();
+        let cmd = (tool.configure)(Command::new("test"));
+        let matches = cmd.get_matches_from(["test", "-i", "hello\\uZZZZ", "-c", "Decode"]);
+        assert!((tool.run)(&matches).is_err());
+    }
+}

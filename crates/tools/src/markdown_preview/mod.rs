@@ -37,6 +37,10 @@ impl Tool for MarkdownPreviewTool {
         metadata()
     }
 
+    fn supports_compact_overlay(&self) -> bool {
+        false
+    }
+
     fn detectors(&self) -> Vec<Box<dyn Detector>> {
         vec![Box::new(MarkdownDetector)]
     }

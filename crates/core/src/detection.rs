@@ -1,7 +1,7 @@
 use std::collections::{HashMap, HashSet};
 use std::sync::atomic::{AtomicBool, Ordering};
 
-use devtoys_api::{DataTypeSpec, DetectedPayload, Detector, RawData, ToolMetadata};
+use devtoys_api::{DataTypeSpec, DetectedPayload, Detector, RawData, ToolMetadata, TYPE_IMAGE};
 
 pub struct DetectOptions<'a> {
     pub strict: bool,
@@ -19,6 +19,47 @@ pub struct Recommendation {
     pub tool_id: String,
     pub data_type: String,
     pub payload: String,
+    /// Binary content from the detector (clipboard image bytes).
+    pub bytes: Option<Vec<u8>>,
+    /// MIME type accompanying [`Self::bytes`].
+    pub mime: Option<String>,
+}
+
+impl Recommendation {
+    pub fn new(
+        tool_id: impl Into<String>,
+        data_type: impl Into<String>,
+        payload: impl Into<String>,
+    ) -> Self {
+        Self {
+            tool_id: tool_id.into(),
+            data_type: data_type.into(),
+            payload: payload.into(),
+            bytes: None,
+            mime: None,
+        }
+    }
+
+    /// Payload the host should dispatch on recommendation click.
+    ///
+    /// Prefers bytes already on this recommendation. For `image` detections,
+    /// falls back to the original clipboard `RawData::Image` so a MIME string
+    /// is never used as a file path.
+    pub fn paste_payload(&self, clipboard: Option<&RawData>) -> DetectedPayload {
+        if let Some(bytes) = self.bytes.as_ref().filter(|b| !b.is_empty()) {
+            return DetectedPayload::new(self.data_type.clone(), self.payload.clone())
+                .with_bytes(bytes.clone(), self.mime.clone());
+        }
+        if self.data_type == TYPE_IMAGE {
+            if let Some(RawData::Image { bytes, mime }) = clipboard {
+                if !bytes.is_empty() {
+                    return DetectedPayload::new(self.data_type.clone(), self.payload.clone())
+                        .with_bytes(bytes.clone(), mime.clone());
+                }
+            }
+        }
+        DetectedPayload::new(self.data_type.clone(), self.payload.clone())
+    }
 }
 
 /// Registration errors surfaced when assembling the detector tree plus tool
@@ -48,6 +89,8 @@ struct Leaf {
     type_name: String,
     parent_name: Option<&'static str>,
     payload: String,
+    bytes: Option<Vec<u8>>,
+    mime: Option<String>,
 }
 
 pub struct DetectionEngine {
@@ -97,6 +140,8 @@ impl DetectionEngine {
                         tool_id: id.clone(),
                         data_type: leaf.type_name.clone(),
                         payload: leaf.payload.clone(),
+                        bytes: leaf.bytes.clone(),
+                        mime: leaf.mime.clone(),
                     });
                 }
             }
@@ -108,6 +153,8 @@ impl DetectionEngine {
                                 tool_id: id.clone(),
                                 data_type: parent.to_string(),
                                 payload: leaf.payload.clone(),
+                                bytes: leaf.bytes.clone(),
+                                mime: leaf.mime.clone(),
                             });
                         }
                     }
@@ -272,5 +319,7 @@ fn leaf_from(node: &DetectorNode, payload: DetectedPayload) -> Leaf {
         type_name: payload.type_name,
         parent_name: node.parent_name,
         payload: payload.value,
+        bytes: payload.bytes,
+        mime: payload.mime,
     }
 }

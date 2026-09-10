@@ -9,7 +9,9 @@ use crate::cli::CliTool;
 use crate::slot::ToolHandle;
 pub use cli::cli_tool;
 use devtoys_api::{GroupId, ToolId, ToolMetadata, TYPE_FILE, TYPE_TEXT};
-pub use helper::{checksum_matches, compute_hash, HashAlgorithm, HashError};
+pub use helper::{
+    checksum_matches, checksum_matches_input, compute_hash, HashAlgorithm, HashError,
+};
 #[cfg(feature = "gui")]
 pub use view::HashChecksumView;
 

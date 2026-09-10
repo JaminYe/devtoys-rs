@@ -6,7 +6,7 @@ use crate::catalog::Tool;
 #[cfg(feature = "gui")]
 use crate::slot::ToolHandle;
 use devtoys_api::{GroupId, ToolId, ToolMetadata, TYPE_TEXT};
-pub use helper::{test_regex, RegexOptions, RegexTesterError};
+pub use helper::{substitute, test_regex, RegexOptions, RegexTesterError};
 #[cfg(feature = "gui")]
 pub use view::RegexTesterView;
 

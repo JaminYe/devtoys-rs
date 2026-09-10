@@ -57,13 +57,16 @@ pub fn json_to_table(input: &str, format: TableFormat) -> Result<String, JsonTab
         return Err(JsonTableError::NotObjectArray);
     }
 
+    let flattened: Vec<Map<String, Value>> = array
+        .iter()
+        .map(|item| flatten_object(item.as_object().expect("checked object array")))
+        .collect();
+
     let mut headers: Vec<String> = Vec::new();
-    for item in array {
-        if let Some(obj) = item.as_object() {
-            for key in obj.keys() {
-                if !headers.iter().any(|h| h == key) {
-                    headers.push(key.clone());
-                }
+    for obj in &flattened {
+        for key in obj.keys() {
+            if !headers.iter().any(|h| h == key) {
+                headers.push(key.clone());
             }
         }
     }
@@ -72,10 +75,9 @@ pub fn json_to_table(input: &str, format: TableFormat) -> Result<String, JsonTab
     }
 
     let delim = format.delimiter();
-    let mut lines = Vec::with_capacity(array.len() + 1);
+    let mut lines = Vec::with_capacity(flattened.len() + 1);
     lines.push(join_fields(headers.iter().map(|h| h.as_str()), delim));
-    for item in array {
-        let obj: &Map<String, Value> = item.as_object().expect("checked object array");
+    for obj in &flattened {
         let cells: Vec<String> = headers
             .iter()
             .map(|key| match obj.get(key) {
@@ -86,6 +88,25 @@ pub fn json_to_table(input: &str, format: TableFormat) -> Result<String, JsonTab
         lines.push(join_fields(cells.iter().map(String::as_str), delim));
     }
     Ok(lines.join("\n"))
+}
+
+/// Nested objects become `parent_child` keys; nested arrays are dropped.
+fn flatten_object(obj: &Map<String, Value>) -> Map<String, Value> {
+    let mut flattened = Map::new();
+    for (key, value) in obj {
+        match value {
+            Value::Object(nested) => {
+                for (child_key, child_value) in flatten_object(nested) {
+                    flattened.insert(format!("{key}_{child_key}"), child_value);
+                }
+            }
+            Value::Array(_) => {}
+            other => {
+                flattened.insert(key.clone(), other.clone());
+            }
+        }
+    }
+    flattened
 }
 
 fn cell_value(value: &Value) -> String {
@@ -149,5 +170,30 @@ mod tests {
     fn csv_quotes_delimiter_in_field() {
         let got = json_to_table(r#"[{"a":"x,y"}]"#, TableFormat::Csv).unwrap();
         assert_eq!(got, "a\n\"x,y\"");
+    }
+
+    #[test]
+    fn nested_object_flattens_to_parent_child_column() {
+        let got = json_to_table(r#"[{"a":{"b":1}}]"#, TableFormat::Csv).unwrap();
+        assert_eq!(got, "a_b\n1");
+    }
+
+    #[test]
+    fn multi_level_nested_object_joins_ancestor_chain() {
+        let got = json_to_table(r#"[{"a":{"b":{"c":2}}}]"#, TableFormat::Csv).unwrap();
+        assert_eq!(got, "a_b_c\n2");
+    }
+
+    #[test]
+    fn mixed_flat_and_nested_fields_keep_and_flatten() {
+        let got = json_to_table(r#"[{"x":1,"a":{"b":2}}]"#, TableFormat::Csv).unwrap();
+        assert_eq!(got, "x,a_b\n1,2");
+    }
+
+    #[test]
+    fn nested_array_is_stripped_not_expanded() {
+        let got = json_to_table(r#"[{"a":[1,2],"b":3}]"#, TableFormat::Csv).unwrap();
+        assert_eq!(got, "b\n3");
+        assert!(!got.contains("a"));
     }
 }

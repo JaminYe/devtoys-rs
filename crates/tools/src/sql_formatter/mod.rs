@@ -1,4 +1,5 @@
 mod cli;
+mod dialect;
 mod helper;
 #[cfg(feature = "gui")]
 mod view;
