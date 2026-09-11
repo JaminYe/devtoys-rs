@@ -10,20 +10,8 @@ permissions:
 
 jobs:
   build:
-    name: Build (${{ matrix.os }})
-    runs-on: ${{ matrix.os }}
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - os: windows-latest
-            target: x86_64-pc-windows-msvc
-          - os: ubuntu-latest
-            target: x86_64-unknown-linux-gnu
-          - os: macos-latest
-            target: aarch64-apple-darwin
-          - os: macos-latest
-            target: x86_64-apple-darwin
+    name: Build Windows x64 Installer
+    runs-on: windows-latest
 
     steps:
       - uses: actions/checkout@v5
@@ -31,62 +19,65 @@ jobs:
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
         with:
-          targets: ${{ matrix.target }}
+          targets: x86_64-pc-windows-msvc
 
       - name: Rust cache
         uses: Swatinem/rust-cache@v2
+        with:
+          key: ${{ runner.os }}-x86_64-pc-windows-msvc
 
-      - name: Install Linux dependencies (egui)
-        if: runner.os == 'Linux'
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y \
-            libxkbcommon-dev libxkbcommon-x11-dev libwayland-dev \
-            libxcb-render0-dev libxcb-shape0-dev libxcb-xfixes0-dev \
-            libgl1-mesa-dev libegl1-mesa-dev pkg-config
-
-      - name: Build release binaries
-        run: cargo build --release --target ${{ matrix.target }}
-
-      - name: Package Windows installer (Inno Setup)
-        if: runner.os == 'Windows' && startsWith(github.ref, 'refs/tags/')
+      - name: Resolve and validate build version
+        id: version
         shell: pwsh
         run: |
-          $version = "${{ github.ref_name }}" -replace '^v', ''
-          & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" /DAppVersion=$version /DTarget=${{ matrix.target }} packaging\windows\setup.iss
-          Move-Item "packaging\windows\output\devtoys-${{ matrix.target }}-setup.exe" "devtoys-${{ matrix.target }}-setup.exe"
+          if ("${{ github.ref }}" -like "refs/tags/*") {
+            $tag = "${{ github.ref_name }}"
+            $ver = $tag -replace '^[vV]', ''
+            $semverRegex = '^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+([0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?$'
+            if ($ver -notmatch $semverRegex) {
+              Write-Error "Release tag '$tag' does not conform to SemVer specification."
+              exit 1
+            }
+            Write-Host "Resolved release SemVer: $ver"
+            "APP_VERSION=$ver" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          } else {
+            # Workspace default version for non-tag builds
+            $cargoToml = Get-Content "Cargo.toml" -Raw
+            if ($cargoToml -match 'version\s*=\s*"([^"]+)"') {
+              $ver = $matches[1]
+            } else {
+              $ver = "0.1.0"
+            }
+            Write-Host "Non-tag build using workspace version: $ver"
+            "APP_VERSION=$ver" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          }
 
-      - name: Prepare package directory
-        shell: bash
+      - name: Build release binary
+        shell: pwsh
         run: |
-          mkdir -p package
-          BIN_DIR="target/${{ matrix.target }}/release"
-          if [ "${{ runner.os }}" = "Windows" ]; then EXT=".exe"; else EXT=""; fi
-          cp "$BIN_DIR/devtoys$EXT" package/
-          cp README.md LICENSE package/ 2>/dev/null || true
+          $env:DEVTOYS_APP_VERSION = "$env:APP_VERSION"
+          cargo build --release --target x86_64-pc-windows-msvc -p devtoys
 
-      - name: Create archives
-        if: startsWith(github.ref, 'refs/tags/')
-        shell: bash
+      - name: Package Windows installer (Inno Setup)
+        shell: pwsh
         run: |
-          cd package
-          if [ "${{ runner.os }}" = "Windows" ]; then
-            7z a "../devtoys-${{ matrix.target }}.zip" .
-          else
-            tar czf "../devtoys-${{ matrix.target }}.tar.gz" .
-          fi
-          cd ..
-          sha256sum devtoys-${{ matrix.target }}.* >> checksums-${{ matrix.target }}.txt
+          & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" /DAppVersion=$env:APP_VERSION /DTarget=x86_64-pc-windows-msvc packaging\windows\setup.iss
+          Move-Item "packaging\windows\output\devtoys-x86_64-pc-windows-msvc-setup.exe" "devtoys-x86_64-pc-windows-msvc-setup.exe"
 
-      # 手动触发时直接上传 package 目录供下载；tag 时额外上传发布物
+      - name: Generate SHA-256 checksum
+        shell: pwsh
+        run: |
+          $hash = (Get-FileHash -Algorithm SHA256 "devtoys-x86_64-pc-windows-msvc-setup.exe").Hash.ToLower()
+          "$hash  devtoys-x86_64-pc-windows-msvc-setup.exe" | Set-Content -Path "checksums.txt" -Encoding ascii
+          Write-Host "Generated checksum: $hash  devtoys-x86_64-pc-windows-msvc-setup.exe"
+
       - name: Upload artifacts
         uses: actions/upload-artifact@v7
         with:
-          name: dist-${{ matrix.target }}
+          name: dist-windows-x64
           path: |
-            package/
-            devtoys-*
-            checksums-*
+            devtoys-x86_64-pc-windows-msvc-setup.exe
+            checksums.txt
           retention-days: 7
           if-no-files-found: error
 
@@ -94,22 +85,17 @@ jobs:
     name: Publish Release
     needs: build
     if: startsWith(github.ref, 'refs/tags/')
-    runs-on: ubuntu-latest
+    runs-on: windows-latest
     steps:
-      - name: Download all artifacts
+      - name: Download artifacts
         uses: actions/download-artifact@v7
         with:
+          name: dist-windows-x64
           path: dist
-          merge-multiple: true
-
-      - name: Merge checksums
-        run: cd dist && cat checksums-*.txt > checksums.txt && rm checksums-*.txt
 
       - name: Upload to GitHub Release
         uses: softprops/action-gh-release@v3
         with:
           files: |
-            dist/devtoys-*.zip
-            dist/devtoys-*.tar.gz
-            dist/devtoys-*-setup.exe
+            dist/devtoys-x86_64-pc-windows-msvc-setup.exe
             dist/checksums.txt

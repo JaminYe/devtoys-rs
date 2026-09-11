@@ -29,6 +29,7 @@ fn round_trips_all_settings_fields() {
         theme: ThemePreference::Dark,
         smart_detection_enabled: false,
         smart_detection_paste: false,
+        auto_check_updates: true,
         favorites: vec!["JsonFormatter".into(), "TextTool".into()],
         window: Some(WindowState {
             x: 12.0,

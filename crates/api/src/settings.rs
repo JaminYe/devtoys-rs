@@ -37,6 +37,8 @@ pub struct AppSettings {
     pub smart_detection_enabled: bool,
     #[serde(default = "default_true")]
     pub smart_detection_paste: bool,
+    #[serde(default = "default_true")]
+    pub auto_check_updates: bool,
     #[serde(default)]
     pub favorites: Vec<String>,
     #[serde(default)]
@@ -55,6 +57,7 @@ impl Default for AppSettings {
             theme: ThemePreference::System,
             smart_detection_enabled: true,
             smart_detection_paste: true,
+            auto_check_updates: true,
             favorites: Vec::new(),
             window: None,
             tool_options: BTreeMap::new(),
@@ -94,6 +97,7 @@ mod tests {
         assert_eq!(settings.theme, ThemePreference::Dark);
         assert!(!settings.smart_detection_enabled);
         assert!(settings.smart_detection_paste);
+        assert!(settings.auto_check_updates);
         assert_eq!(settings.favorites, ["JsonFormatter"]);
         assert_eq!(
             settings.window,
@@ -124,5 +128,15 @@ mod tests {
         let opts = settings.tool_options("JsonFormatter").unwrap();
         assert_eq!(opts["indent"], "eight_spaces");
         assert_eq!(opts["sort_properties"], true);
+    }
+
+    #[test]
+    fn auto_check_updates_can_be_disabled_and_persisted() {
+        let json = r#"{"auto_check_updates": false}"#;
+        let settings: AppSettings = serde_json::from_str(json).unwrap();
+        assert!(!settings.auto_check_updates);
+
+        let serialized = serde_json::to_string(&settings).unwrap();
+        assert!(serialized.contains(r#""auto_check_updates":false"#));
     }
 }

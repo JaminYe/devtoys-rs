@@ -35,17 +35,26 @@ cargo build --release -p devtoys
 
 > Linux 需要安装 egui 相关依赖：libxkbcommon、libwayland 等，详见 [.github/workflows/build.yml](.github/workflows/build.yml)
 
-## 🚀 下载
+## 🚀 下载与安装
 
-前往 [Releases](https://github.com/JaminYe/devtoys-rs/releases) 页面下载对应平台的打包产物：
+当前官方预编译包分发 **Windows x64 安装版**。
 
-| 平台 | 架构 | 产物 |
-|------|------|------|
-| Windows | x86_64 | `devtoys-x86_64-pc-windows-msvc.zip` |
-| macOS | Apple Silicon | `devtoys-aarch64-apple-darwin.tar.gz` |
-| macOS | Intel | `devtoys-x86_64-apple-darwin.tar.gz` |
-| Linux | x86_64 | `devtoys-x86_64-unknown-linux-gnu.tar.gz` |
+前往 [Releases](https://github.com/JaminYe/devtoys-rs/releases) 页面下载最新正式版本：
 
+| 平台 | 架构 | 安装包 | 校验文件 |
+|------|------|------|------|
+| Windows 10+ | x86_64 | `devtoys-x86_64-pc-windows-msvc-setup.exe` | `checksums.txt` |
+
+### 安装方式
+
+1. 从 Release 页面下载 `devtoys-x86_64-pc-windows-msvc-setup.exe` 与 `checksums.txt`；
+2. 可选校验 SHA-256 摘要：
+   ```powershell
+   Get-FileHash devtoys-x86_64-pc-windows-msvc-setup.exe -Algorithm SHA256
+   ```
+3. 运行安装包完成安装。应用支持启动时自动检查更新，也可在“设置”页手动检查并在应用内一键下载更新。
+
+> 提示：其他操作系统暂不分发预编译安装包，可通过源码自行编译（`cargo build --release -p devtoys`）。
 ## 🏗️ 项目结构
 
 ```

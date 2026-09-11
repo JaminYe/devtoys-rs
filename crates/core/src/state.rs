@@ -1,7 +1,7 @@
 use devtoys_api::{AppSettings, ThemePreference, ToolMetadata};
 
 use crate::{CoreError, SettingsStore, ToolRegistry};
-
+#[derive(Clone)]
 pub struct AppState {
     settings: AppSettings,
     registry: ToolRegistry,
@@ -75,6 +75,11 @@ impl AppState {
 
     pub fn set_smart_detection_paste(&mut self, enabled: bool) -> Result<(), CoreError> {
         self.settings.smart_detection_paste = enabled;
+        self.persist()
+    }
+
+    pub fn set_auto_check_updates(&mut self, enabled: bool) -> Result<(), CoreError> {
+        self.settings.auto_check_updates = enabled;
         self.persist()
     }
 
