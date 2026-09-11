@@ -781,6 +781,36 @@ impl Workspace {
                                 },
                             );
                         }
+                        crate::updater::UpdateStatus::Cancelling { .. } => {
+                            widgets::setting_row(
+                                ui,
+                                &palette,
+                                t("settings.update_cancelling"),
+                                Some(t("settings.update_cancelling_desc")),
+                                |ui| {
+                                    ui.add_enabled(
+                                        false,
+                                        egui::Button::new(t("settings.update_cancelling_button")),
+                                    );
+                                },
+                            );
+                        }
+                        crate::updater::UpdateStatus::CleanupFailed {
+                            ref reason,
+                            ..
+                        } => {
+                            widgets::setting_row(
+                                ui,
+                                &palette,
+                                t("settings.update_cleanup_failed"),
+                                Some(reason),
+                                |ui| {
+                                    if ui.button(t("settings.update_retry_cleanup")).clicked() {
+                                        self.updater.retry_cleanup();
+                                    }
+                                },
+                            );
+                        }
                         crate::updater::UpdateStatus::Verifying { .. } => {
                             widgets::setting_row(
                                 ui,
@@ -1817,6 +1847,38 @@ mod tests {
                 },
                 checksum_asset: None,
             }),
+            UpdateStatus::Cancelling {
+                package: crate::updater::ReleasePackage {
+                    current_version: "0.1.0".into(),
+                    latest_version: "0.2.0".into(),
+                    release_url: "https://github.com/test".into(),
+                    release_notes: None,
+                    asset: UpdateAsset {
+                        name: "devtoys-x86_64-pc-windows-msvc-setup.exe".into(),
+                        download_url: "https://download/setup.exe".into(),
+                        size: 5000000,
+                        sha256: None,
+                    },
+                    checksum_asset: None,
+                },
+            },
+            UpdateStatus::CleanupFailed {
+                package: crate::updater::ReleasePackage {
+                    current_version: "0.1.0".into(),
+                    latest_version: "0.2.0".into(),
+                    release_url: "https://github.com/test".into(),
+                    release_notes: None,
+                    asset: UpdateAsset {
+                        name: "devtoys-x86_64-pc-windows-msvc-setup.exe".into(),
+                        download_url: "https://download/setup.exe".into(),
+                        size: 5000000,
+                        sha256: None,
+                    },
+                    checksum_asset: None,
+                },
+                failed_path: std::path::PathBuf::from("corrupted.tmp"),
+                reason: "文件正被占用，无法删除".into(),
+            },
             UpdateStatus::ReadyToInstall {
                 target_version: "0.2.0".into(),
                 installer_path: std::path::PathBuf::from("setup.exe"),

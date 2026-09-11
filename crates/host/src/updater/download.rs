@@ -28,6 +28,10 @@ pub enum DownloadOutcome {
         reason: String,
         can_retry: bool,
     },
+    CleanupFailed {
+        failed_path: PathBuf,
+        reason: String,
+    },
 }
 
 pub fn parse_checksums_txt(content: &str, target_filename: &str) -> Option<String> {
@@ -152,23 +156,32 @@ impl FileDownloader for UreqFileDownloader {
 
         drop(file);
 
+        let remove_part = |path: &Path| -> Result<(), String> {
+            if path.exists() {
+                if let Err(cleanup_err) = fs::remove_file(path) {
+                    return Err(format!("cleanup_failed|{}|{}", path.display(), cleanup_err));
+                }
+            }
+            Ok(())
+        };
+
         if let Err(e) = download_res {
-            let _ = fs::remove_file(&part_path);
+            remove_part(&part_path)?;
             return Err(e);
         }
         if let Some(expected_size) = total_bytes {
             if downloaded != expected_size {
-                let _ = fs::remove_file(&part_path);
+                remove_part(&part_path)?;
                 return Err(format!(
                     "下载文件大小与 Content-Length 不符（已下载 {downloaded} 字节，预期 {expected_size} 字节）"
                 ));
             }
         }
 
-        fs::rename(&part_path, dest).map_err(|e| {
-            let _ = fs::remove_file(&part_path);
-            format!("重命名下载文件失败：{e}")
-        })?;
+        if let Err(e) = fs::rename(&part_path, dest) {
+            remove_part(&part_path)?;
+            return Err(format!("重命名下载文件失败：{e}"));
+        }
 
         Ok(())
     }
@@ -185,12 +198,26 @@ impl FileDownloader for UreqFileDownloader {
     }
 }
 
+fn cleanup_staging_file(path: &Path, action_desc: &str) -> Result<(), DownloadOutcome> {
+    if path.exists() {
+        if let Err(err) = fs::remove_file(path) {
+            return Err(DownloadOutcome::CleanupFailed {
+                failed_path: path.to_path_buf(),
+                reason: format!("{action_desc}：{err}"),
+            });
+        }
+    }
+    Ok(())
+}
+
+#[allow(clippy::too_many_arguments)]
 pub fn download_and_verify<D: FileDownloader>(
     downloader: &D,
     installer_asset: &UpdateAsset,
     checksum_asset: Option<&UpdateAsset>,
     target_version: &str,
     target_dir: &Path,
+    task_id: u64,
     cancel: &AtomicBool,
     on_progress: impl Fn(u64, Option<u64>),
 ) -> DownloadOutcome {
@@ -233,16 +260,28 @@ pub fn download_and_verify<D: FileDownloader>(
         return DownloadOutcome::Cancelled;
     }
 
-    // 2. Download to target directory
+    // 2. Download to task-specific staging file
     let _ = fs::create_dir_all(target_dir);
     let final_dest = target_dir.join(&installer_asset.name);
+    let staging_dest = target_dir.join(format!("{}.task_{}.tmp", installer_asset.name, task_id));
 
     if let Err(e) = downloader.download(
         &installer_asset.download_url,
-        &final_dest,
+        &staging_dest,
         cancel,
         &on_progress,
     ) {
+        if let Some(rest) = e.strip_prefix("cleanup_failed|") {
+            if let Some((path_str, err_msg)) = rest.split_once('|') {
+                return DownloadOutcome::CleanupFailed {
+                    failed_path: PathBuf::from(path_str),
+                    reason: format!("清理临时文件失败：{err_msg}"),
+                };
+            }
+        }
+        if let Err(outcome) = cleanup_staging_file(&staging_dest, "清理临时文件失败") {
+            return outcome;
+        }
         if e == "cancelled" || cancel.load(Ordering::Relaxed) {
             return DownloadOutcome::Cancelled;
         }
@@ -252,11 +291,21 @@ pub fn download_and_verify<D: FileDownloader>(
         };
     }
 
-    // 3. Compute and verify SHA-256
-    let computed_hash = match compute_sha256(&final_dest) {
+    if cancel.load(Ordering::Relaxed) {
+        if let Err(outcome) = cleanup_staging_file(&staging_dest, "清理临时文件失败") {
+            return outcome;
+        }
+        return DownloadOutcome::Cancelled;
+    }
+
+    // 3. 计算并校验 SHA-256 摘要
+    let computed_hash = match compute_sha256(&staging_dest) {
         Ok(h) => h,
         Err(e) => {
-            let _ = fs::remove_file(&final_dest);
+            if let Err(outcome) = cleanup_staging_file(&staging_dest, "校验失败后清理临时文件失败")
+            {
+                return outcome;
+            }
             return DownloadOutcome::Failed {
                 reason: format!("计算安装包 SHA-256 摘要失败：{e}"),
                 can_retry: true,
@@ -265,7 +314,10 @@ pub fn download_and_verify<D: FileDownloader>(
     };
 
     if !computed_hash.eq_ignore_ascii_case(&expected_hash) {
-        let _ = fs::remove_file(&final_dest);
+        if let Err(outcome) = cleanup_staging_file(&staging_dest, "校验失败后清理损坏文件失败")
+        {
+            return outcome;
+        }
         return DownloadOutcome::Failed {
             reason: format!(
                 "SHA-256 校验不匹配：预期 {expected_hash}，实际计算得到 {computed_hash}，文件可能已损坏"
@@ -274,13 +326,31 @@ pub fn download_and_verify<D: FileDownloader>(
         };
     }
 
+    // 校验完成后检查是否已取消；若取消则收尾清理并退出，严禁进入安装就绪
+    if cancel.load(Ordering::Relaxed) {
+        if let Err(outcome) = cleanup_staging_file(&staging_dest, "清理临时文件失败") {
+            return outcome;
+        }
+        return DownloadOutcome::Cancelled;
+    }
+
+    // 4. 校验通过 - 安全重命名至目标安装文件
+    if let Err(e) = fs::rename(&staging_dest, &final_dest) {
+        if let Err(outcome) = cleanup_staging_file(&staging_dest, "重命名失败后清理临时文件失败")
+        {
+            return outcome;
+        }
+        return DownloadOutcome::Failed {
+            reason: format!("重命名已校验安装包失败：{e}"),
+            can_retry: true,
+        };
+    }
     DownloadOutcome::Success {
         installer_path: final_dest,
         expected_sha256: expected_hash,
         target_version: target_version.to_string(),
     }
 }
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -372,6 +442,7 @@ e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855  devtoys-x86_64
             Some(&checksum_asset),
             "0.2.0",
             dir.path(),
+            1,
             &cancel,
             |_, _| {},
         );
@@ -422,6 +493,7 @@ e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855  devtoys-x86_64
             Some(&checksum_asset),
             "0.2.0",
             dir.path(),
+            1,
             &cancel,
             |_, _| {},
         );
@@ -469,6 +541,7 @@ e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855  devtoys-x86_64
             Some(&checksum_asset),
             "0.2.0",
             dir.path(),
+            1,
             &cancel,
             |_, _| {},
         );
@@ -501,6 +574,7 @@ e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855  devtoys-x86_64
             None,
             "0.2.0",
             dir.path(),
+            1,
             &cancel,
             |_, _| {},
         );
@@ -539,6 +613,7 @@ e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855  devtoys-x86_64
             None,
             "0.2.0",
             dir.path(),
+            1,
             &cancel,
             |_, _| {},
         );
@@ -555,5 +630,97 @@ e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855  devtoys-x86_64
             }
             other => panic!("Expected Success, got {other:?}"),
         }
+    }
+
+    #[test]
+    fn download_cancelled_cleans_up_staging_and_preserves_other_task_final_dest() {
+        let dir = tempfile::tempdir().unwrap();
+        let installer_name = "devtoys-setup.exe";
+        let final_dest = dir.path().join(installer_name);
+        fs::write(&final_dest, b"already-verified-installer-from-task-2").unwrap();
+
+        let downloader = MockDownloader {
+            download_data: Ok(b"task-1-data".to_vec()),
+            checksum_text: Ok("".into()),
+        };
+        let installer_asset = UpdateAsset {
+            name: installer_name.into(),
+            download_url: "http://mock/setup.exe".into(),
+            size: 100,
+            sha256: Some("abcd".into()),
+        };
+
+        let cancel = AtomicBool::new(true);
+        let outcome = download_and_verify(
+            &downloader,
+            &installer_asset,
+            None,
+            "0.2.0",
+            dir.path(),
+            1, // task 1
+            &cancel,
+            |_, _| {},
+        );
+
+        assert_eq!(outcome, DownloadOutcome::Cancelled);
+        let task_1_staging = dir.path().join(format!("{installer_name}.task_1.tmp"));
+        assert!(
+            !task_1_staging.exists(),
+            "Task 1 staging file must be cleaned up"
+        );
+        assert!(
+            final_dest.exists(),
+            "Other task's final dest must remain untouched"
+        );
+        assert_eq!(
+            fs::read(&final_dest).unwrap(),
+            b"already-verified-installer-from-task-2"
+        );
+    }
+
+    #[test]
+    fn download_corrupted_payload_cleans_up_staging_and_preserves_other_task_final_dest() {
+        let dir = tempfile::tempdir().unwrap();
+        let installer_name = "devtoys-setup.exe";
+        let final_dest = dir.path().join(installer_name);
+        fs::write(&final_dest, b"already-verified-installer-from-task-2").unwrap();
+
+        let downloader = MockDownloader {
+            download_data: Ok(b"task-1-corrupted-data".to_vec()),
+            checksum_text: Ok("".into()),
+        };
+        let installer_asset = UpdateAsset {
+            name: installer_name.into(),
+            download_url: "http://mock/setup.exe".into(),
+            size: 100,
+            sha256: Some("0000000000000000000000000000000000000000000000000000000000000000".into()),
+        };
+
+        let cancel = AtomicBool::new(false);
+        let outcome = download_and_verify(
+            &downloader,
+            &installer_asset,
+            None,
+            "0.2.0",
+            dir.path(),
+            1, // task 1
+            &cancel,
+            |_, _| {},
+        );
+
+        assert!(matches!(outcome, DownloadOutcome::Failed { .. }));
+        let task_1_staging = dir.path().join(format!("{installer_name}.task_1.tmp"));
+        assert!(
+            !task_1_staging.exists(),
+            "Task 1 staging file must be deleted on sha mismatch"
+        );
+        assert!(
+            final_dest.exists(),
+            "Other task's final dest must NOT be deleted by task 1 failure"
+        );
+        assert_eq!(
+            fs::read(&final_dest).unwrap(),
+            b"already-verified-installer-from-task-2"
+        );
     }
 }
