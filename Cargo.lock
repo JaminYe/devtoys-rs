@@ -1032,11 +1032,15 @@ dependencies = [
  "egui",
  "egui_extras",
  "embed-resource",
+ "hex",
  "log",
  "memmap2",
+ "serde",
  "serde_json",
+ "sha2",
  "skrifa",
  "tempfile",
+ "ureq",
  "windows-sys 0.60.2",
 ]
 

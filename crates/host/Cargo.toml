@@ -18,9 +18,14 @@ dirs.workspace = true
 eframe.workspace = true
 egui.workspace = true
 egui_extras.workspace = true
+hex.workspace = true
 log.workspace = true
 memmap2.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+sha2.workspace = true
 skrifa.workspace = true
+ureq.workspace = true
 
 [target.'cfg(windows)'.dependencies]
 windows-sys = { version = "0.60", features = ["Win32_Globalization"] }
