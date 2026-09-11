@@ -40,6 +40,8 @@ pub struct AppSettings {
     #[serde(default = "default_true")]
     pub auto_check_updates: bool,
     #[serde(default)]
+    pub include_prerelease: bool,
+    #[serde(default)]
     pub favorites: Vec<String>,
     #[serde(default)]
     pub window: Option<WindowState>,
@@ -58,6 +60,7 @@ impl Default for AppSettings {
             smart_detection_enabled: true,
             smart_detection_paste: true,
             auto_check_updates: true,
+            include_prerelease: false,
             favorites: Vec::new(),
             window: None,
             tool_options: BTreeMap::new(),

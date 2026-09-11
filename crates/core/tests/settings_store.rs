@@ -30,6 +30,7 @@ fn round_trips_all_settings_fields() {
         smart_detection_enabled: false,
         smart_detection_paste: false,
         auto_check_updates: true,
+        include_prerelease: false,
         favorites: vec!["JsonFormatter".into(), "TextTool".into()],
         window: Some(WindowState {
             x: 12.0,

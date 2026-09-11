@@ -236,29 +236,37 @@ impl HttpClient for UreqClient {
 }
 
 /// Evaluates a list of GitHub releases against the given current version.
-pub fn evaluate_releases(releases: &[GitHubRelease], current_version: &SemVer) -> CheckOutcome {
-    // 1. Filter out draft and prerelease releases
-    let mut official_releases: Vec<(&GitHubRelease, SemVer)> = Vec::new();
+pub fn evaluate_releases(
+    releases: &[GitHubRelease],
+    current_version: &SemVer,
+    include_prerelease: bool,
+) -> CheckOutcome {
+    // 1. Filter out draft and (optionally) prerelease releases
+    let mut candidate_releases: Vec<(&GitHubRelease, SemVer)> = Vec::new();
     for rel in releases {
-        if rel.draft || rel.prerelease {
+        if rel.draft {
+            continue;
+        }
+        if !include_prerelease && rel.prerelease {
             continue;
         }
         if let Ok(ver) = SemVer::parse(&rel.tag_name) {
-            // Ignore pre-releases even if tag had prerelease identifier
-            if !ver.is_prerelease() {
-                official_releases.push((rel, ver));
+            // Ignore pre-releases even if tag had prerelease identifier unless allowed
+            if !include_prerelease && ver.is_prerelease() {
+                continue;
             }
+            candidate_releases.push((rel, ver));
         }
     }
 
-    if official_releases.is_empty() {
+    if candidate_releases.is_empty() {
         return CheckOutcome::NoRelease;
     }
 
-    // 2. Sort by SemVer descending to find the highest official release
-    official_releases.sort_by(|a, b| b.1.cmp(&a.1));
+    // 2. Sort by SemVer descending to find the highest candidate release
+    candidate_releases.sort_by(|a, b| b.1.cmp(&a.1));
 
-    let (latest_rel, latest_ver) = &official_releases[0];
+    let (latest_rel, latest_ver) = &candidate_releases[0];
 
     // 3. Prohibit downgrade: if latest <= current, we are up-to-date
     if !latest_ver.is_newer_than(current_version) {
@@ -323,10 +331,11 @@ pub fn check_updates<C: HttpClient>(
     client: &C,
     url: &str,
     current_version: &SemVer,
+    include_prerelease: bool,
 ) -> CheckOutcome {
     match client.get(url) {
         Ok((200, body)) => match serde_json::from_str::<Vec<GitHubRelease>>(&body) {
-            Ok(releases) => evaluate_releases(&releases, current_version),
+            Ok(releases) => evaluate_releases(&releases, current_version, include_prerelease),
             Err(e) => CheckOutcome::Failed {
                 reason: format!("解析 GitHub 发布数据失败：{e}"),
                 can_retry: true,
@@ -408,7 +417,7 @@ mod tests {
         };
 
         let current = SemVer::parse("0.1.0").unwrap();
-        let outcome = check_updates(&client, "http://mock", &current);
+        let outcome = check_updates(&client, "http://mock", &current, false);
         match outcome {
             CheckOutcome::UpdateAvailable(pkg) => {
                 assert_eq!(pkg.latest_version, "0.2.0");
@@ -433,7 +442,7 @@ mod tests {
         };
 
         let current = SemVer::parse("0.1.0").unwrap();
-        let outcome = check_updates(&client, "http://mock", &current);
+        let outcome = check_updates(&client, "http://mock", &current, false);
         assert_eq!(
             outcome,
             CheckOutcome::Latest {
@@ -456,7 +465,7 @@ mod tests {
         };
 
         let current = SemVer::parse("0.1.0").unwrap();
-        let outcome = check_updates(&client, "http://mock", &current);
+        let outcome = check_updates(&client, "http://mock", &current, false);
         assert_eq!(
             outcome,
             CheckOutcome::Latest {
@@ -493,7 +502,7 @@ mod tests {
         };
 
         let current = SemVer::parse("0.1.0").unwrap();
-        let outcome = check_updates(&client, "http://mock", &current);
+        let outcome = check_updates(&client, "http://mock", &current, false);
         assert_eq!(
             outcome,
             CheckOutcome::Latest {
@@ -516,7 +525,7 @@ mod tests {
         };
 
         let current = SemVer::parse("0.1.0").unwrap();
-        let outcome = check_updates(&client, "http://mock", &current);
+        let outcome = check_updates(&client, "http://mock", &current, false);
         match outcome {
             CheckOutcome::Failed { reason, can_retry } => {
                 assert!(can_retry);
@@ -532,7 +541,7 @@ mod tests {
             result: Ok((200, "[]".into())),
         };
         let current = SemVer::parse("0.1.0").unwrap();
-        let outcome = check_updates(&client, "http://mock", &current);
+        let outcome = check_updates(&client, "http://mock", &current, false);
         assert_eq!(outcome, CheckOutcome::NoRelease);
     }
 
@@ -542,7 +551,7 @@ mod tests {
             result: Ok((404, "Not Found".into())),
         };
         let current = SemVer::parse("0.1.0").unwrap();
-        let outcome = check_updates(&client, "http://mock", &current);
+        let outcome = check_updates(&client, "http://mock", &current, false);
         assert_eq!(outcome, CheckOutcome::NoRelease);
     }
 
@@ -552,7 +561,7 @@ mod tests {
             result: Err("GitHub API 请求过于频繁（触发速率限制），请稍后重试".into()),
         };
         let current = SemVer::parse("0.1.0").unwrap();
-        let outcome = check_updates(&client, "http://mock", &current);
+        let outcome = check_updates(&client, "http://mock", &current, false);
         match outcome {
             CheckOutcome::Failed { reason, can_retry } => {
                 assert!(can_retry);
@@ -568,7 +577,7 @@ mod tests {
             result: Err("网络连接超时或失败，请检查网络设置后重试：timeout".into()),
         };
         let current = SemVer::parse("0.1.0").unwrap();
-        let outcome = check_updates(&client, "http://mock", &current);
+        let outcome = check_updates(&client, "http://mock", &current, false);
         match outcome {
             CheckOutcome::Failed { reason, can_retry } => {
                 assert!(can_retry);
@@ -607,5 +616,36 @@ mod tests {
         );
 
         assert_eq!(parse_proxy_server_string(""), None);
+    }
+
+    #[test]
+    fn check_finds_prerelease_when_allowed() {
+        let releases = vec![
+            sample_release(
+                "v0.2.3",
+                false,
+                true,
+                &["devtoys-x86_64-pc-windows-msvc-setup.exe", "checksums.txt"],
+            ),
+            sample_release(
+                "v0.1.0",
+                false,
+                false,
+                &["devtoys-x86_64-pc-windows-msvc-setup.exe"],
+            ),
+        ];
+        let json = serde_json::to_string(&releases).unwrap();
+        let client = MockClient {
+            result: Ok((200, json)),
+        };
+
+        let current = SemVer::parse("0.1.0").unwrap();
+        let outcome = check_updates(&client, "http://mock", &current, true);
+        match outcome {
+            CheckOutcome::UpdateAvailable(pkg) => {
+                assert_eq!(pkg.latest_version, "0.2.3");
+            }
+            other => panic!("Expected UpdateAvailable v0.2.3, got {other:?}"),
+        }
     }
 }

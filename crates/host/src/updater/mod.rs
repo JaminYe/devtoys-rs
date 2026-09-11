@@ -72,8 +72,7 @@ pub enum UpdateMsg {
     DownloadDone(DownloadOutcome),
     InstallFailed(String),
 }
-
-pub type CheckHandler = Arc<dyn Fn(&SemVer) -> CheckOutcome + Send + Sync>;
+pub type CheckHandler = Arc<dyn Fn(&SemVer, bool) -> CheckOutcome + Send + Sync>;
 pub type DownloadHandler = Arc<
     dyn Fn(
             &UpdateAsset,
@@ -126,7 +125,7 @@ impl UpdateManager {
     #[allow(dead_code)]
     pub fn set_check_handler<F>(&mut self, handler: F)
     where
-        F: Fn(&SemVer) -> CheckOutcome + Send + Sync + 'static,
+        F: Fn(&SemVer, bool) -> CheckOutcome + Send + Sync + 'static,
     {
         self.check_handler = Some(Arc::new(handler));
     }
@@ -229,7 +228,7 @@ impl UpdateManager {
 
     /// Triggers a manual update check.
     /// If a check is already in progress, this is a no-op (prevents duplicate requests).
-    pub fn check_now(&mut self, ctx: egui::Context) -> bool {
+    pub fn check_now(&mut self, ctx: egui::Context, include_prerelease: bool) -> bool {
         if self.status.is_busy() {
             return false;
         }
@@ -243,13 +242,14 @@ impl UpdateManager {
             .spawn(move || {
                 let current_version = SemVer::current();
                 let outcome = match custom_handler {
-                    Some(handler) => handler(&current_version),
+                    Some(handler) => handler(&current_version, include_prerelease),
                     None => {
                         let client = client::UreqClient;
                         client::check_updates(
                             &client,
                             client::DEFAULT_RELEASES_URL,
                             &current_version,
+                            include_prerelease,
                         )
                     }
                 };
@@ -418,7 +418,7 @@ mod tests {
         assert!(manager.status().is_busy());
 
         let ctx = egui::Context::default();
-        assert!(!manager.check_now(ctx.clone()));
+        assert!(!manager.check_now(ctx.clone(), false));
         assert!(!manager.start_download(ctx));
     }
 

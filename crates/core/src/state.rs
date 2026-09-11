@@ -83,6 +83,11 @@ impl AppState {
         self.persist()
     }
 
+    pub fn set_include_prerelease(&mut self, include: bool) -> Result<(), CoreError> {
+        self.settings.include_prerelease = include;
+        self.persist()
+    }
+
     pub fn set_tool_options(
         &mut self,
         tool_id: impl Into<String>,

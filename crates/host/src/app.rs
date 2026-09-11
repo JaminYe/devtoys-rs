@@ -672,6 +672,22 @@ impl Workspace {
                         },
                     );
 
+                    // 包含测试版开关
+                    let mut include_pre = self.state.settings().include_prerelease;
+                    widgets::setting_row(
+                        ui,
+                        &palette,
+                        t("settings.include_prerelease"),
+                        Some(t("settings.include_prerelease_desc")),
+                        |ui| {
+                            if ui.checkbox(&mut include_pre, "").changed() {
+                                let result = self.state.set_include_prerelease(include_pre);
+                                self.apply_setting(result);
+                            }
+                        },
+                    );
+
+                    ui.add_space(12.0);
                     ui.add_space(12.0);
 
                     // 软件更新状态与操作行
@@ -685,7 +701,9 @@ impl Workspace {
                                 Some("检查是否有可用的新版本"),
                                 |ui| {
                                     if ui.button(t("settings.check_updates")).clicked() {
-                                        self.updater.check_now(ui.ctx().clone());
+                                        let pre = self.state.settings().include_prerelease;
+                                        self.check_is_auto = false;
+                                        self.updater.check_now(ui.ctx().clone(), pre);
                                     }
                                 },
                             );
@@ -709,8 +727,9 @@ impl Workspace {
                                 Some("当前运行的是最新正式版本"),
                                 |ui| {
                                     if ui.button(t("settings.check_updates")).clicked() {
+                                        let pre = self.state.settings().include_prerelease;
                                         self.check_is_auto = false;
-                                        self.updater.check_now(ui.ctx().clone());
+                                        self.updater.check_now(ui.ctx().clone(), pre);
                                     }
                                 },
                             );
@@ -829,7 +848,9 @@ impl Workspace {
                                 Some("仓库尚未发布任何正式版本"),
                                 |ui| {
                                     if ui.button(t("settings.check_updates")).clicked() {
-                                        self.updater.check_now(ui.ctx().clone());
+                                        let pre = self.state.settings().include_prerelease;
+                                        self.check_is_auto = false;
+                                        self.updater.check_now(ui.ctx().clone(), pre);
                                     }
                                 },
                             );
@@ -845,7 +866,8 @@ impl Workspace {
                                 Some(&reason),
                                 |ui| {
                                     if can_retry && ui.button(t("settings.update_retry")).clicked() {
-                                        self.updater.check_now(ui.ctx().clone());
+                                        let pre = self.state.settings().include_prerelease;
+                                        self.updater.check_now(ui.ctx().clone(), pre);
                                     }
                                 },
                             );
@@ -933,7 +955,8 @@ impl Workspace {
             self.startup_checked = true;
             if self.state.settings().auto_check_updates {
                 self.check_is_auto = true;
-                self.updater.check_now(ui.ctx().clone());
+                let pre = self.state.settings().include_prerelease;
+                self.updater.check_now(ui.ctx().clone(), pre);
             }
         }
         let palette = self.palette;
@@ -1783,7 +1806,7 @@ mod tests {
         assert!(workspace.state.settings().auto_check_updates);
         workspace
             .updater
-            .set_check_handler(|v| crate::updater::CheckOutcome::Latest {
+            .set_check_handler(|v, _| crate::updater::CheckOutcome::Latest {
                 current_version: v.to_string(),
             });
 
