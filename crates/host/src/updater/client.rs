@@ -64,6 +64,120 @@ pub trait HttpClient: Send + Sync {
 
 pub struct UreqClient;
 
+pub fn detect_proxy_url() -> Option<String> {
+    // 1. Check process environment variables first
+    let env_vars = [
+        "HTTPS_PROXY",
+        "https_proxy",
+        "ALL_PROXY",
+        "all_proxy",
+        "HTTP_PROXY",
+        "http_proxy",
+    ];
+    for var in env_vars {
+        if let Ok(val) = std::env::var(var) {
+            let trimmed = val.trim();
+            if !trimmed.is_empty() {
+                return Some(normalize_proxy_url(trimmed));
+            }
+        }
+    }
+
+    // 2. On Windows, read system proxy settings from Internet Settings registry
+    #[cfg(windows)]
+    {
+        if let Some(proxy) = read_windows_registry_proxy() {
+            return Some(proxy);
+        }
+    }
+
+    None
+}
+
+pub fn normalize_proxy_url(raw: &str) -> String {
+    let s = raw.trim();
+    if s.starts_with("http://") || s.starts_with("https://") || s.starts_with("socks5://") {
+        s.to_string()
+    } else {
+        format!("http://{s}")
+    }
+}
+
+pub fn parse_proxy_server_string(raw: &str) -> Option<String> {
+    let trimmed = raw.trim();
+    if trimmed.is_empty() {
+        return None;
+    }
+    if trimmed.contains(';') {
+        // e.g. "http=127.0.0.1:7890;https=127.0.0.1:7890"
+        for part in trimmed.split(';') {
+            let part = part.trim();
+            if part.starts_with("https=") {
+                return Some(normalize_proxy_url(&part["https=".len()..]));
+            }
+        }
+        for part in trimmed.split(';') {
+            let part = part.trim();
+            if part.starts_with("http=") {
+                return Some(normalize_proxy_url(&part["http=".len()..]));
+            }
+        }
+    }
+    Some(normalize_proxy_url(trimmed))
+}
+
+#[cfg(windows)]
+fn read_windows_registry_proxy() -> Option<String> {
+    use std::process::Command;
+    let out = Command::new("reg")
+        .args([
+            "query",
+            r"HKCU\Software\Microsoft\Windows\CurrentVersion\Internet Settings",
+            "/v",
+            "ProxyEnable",
+        ])
+        .output()
+        .ok()?;
+
+    if !out.status.success() {
+        return None;
+    }
+
+    let stdout = String::from_utf8_lossy(&out.stdout);
+    let enabled = stdout
+        .lines()
+        .any(|l| l.contains("ProxyEnable") && (l.contains("0x1") || l.contains("1")));
+    if !enabled {
+        return None;
+    }
+
+    let out_server = Command::new("reg")
+        .args([
+            "query",
+            r"HKCU\Software\Microsoft\Windows\CurrentVersion\Internet Settings",
+            "/v",
+            "ProxyServer",
+        ])
+        .output()
+        .ok()?;
+
+    if !out_server.status.success() {
+        return None;
+    }
+
+    let stdout_server = String::from_utf8_lossy(&out_server.stdout);
+    for line in stdout_server.lines() {
+        if line.contains("ProxyServer") {
+            let parts: Vec<&str> = line.split("REG_SZ").collect();
+            if parts.len() >= 2 {
+                return parse_proxy_server_string(parts[1]);
+            }
+        }
+    }
+
+    None
+}
+
 impl HttpClient for UreqClient {
     fn get(&self, url: &str) -> Result<(u16, String), String> {
         let mut builder = ureq::AgentBuilder::new()
@@ -71,24 +185,12 @@ impl HttpClient for UreqClient {
             .timeout_read(std::time::Duration::from_secs(15))
             .user_agent(&format!("devtoys-rs/{}", crate::version::CURRENT_VERSION));
 
-        let proxy_env = std::env::var("HTTPS_PROXY")
-            .or_else(|_| std::env::var("https_proxy"))
-            .or_else(|_| std::env::var("ALL_PROXY"))
-            .or_else(|_| std::env::var("all_proxy"))
-            .or_else(|_| std::env::var("HTTP_PROXY"))
-            .or_else(|_| std::env::var("http_proxy"));
-
-        if let Ok(proxy_url) = proxy_env {
-            let proxy_url = proxy_url.trim();
-            if !proxy_url.is_empty() {
-                if let Ok(proxy) = ureq::Proxy::new(proxy_url) {
-                    builder = builder.proxy(proxy);
-                }
+        if let Some(proxy_url) = detect_proxy_url() {
+            if let Ok(proxy) = ureq::Proxy::new(&proxy_url) {
+                builder = builder.proxy(proxy);
             }
         }
-
         let agent = builder.build();
-
         let response = agent
             .get(url)
             .set("Accept", "application/vnd.github+json")
@@ -474,5 +576,36 @@ mod tests {
             }
             other => panic!("Expected Failed, got {other:?}"),
         }
+    }
+
+    #[test]
+    fn proxy_parsing_and_normalization() {
+        assert_eq!(
+            normalize_proxy_url("127.0.0.1:7890"),
+            "http://127.0.0.1:7890"
+        );
+        assert_eq!(
+            normalize_proxy_url("http://127.0.0.1:7890"),
+            "http://127.0.0.1:7890"
+        );
+        assert_eq!(
+            normalize_proxy_url("socks5://127.0.0.1:1080"),
+            "socks5://127.0.0.1:1080"
+        );
+
+        // Windows registry semicolon format
+        let multi = "http=127.0.0.1:8080;https=127.0.0.1:7897;socks=127.0.0.1:1080";
+        assert_eq!(
+            parse_proxy_server_string(multi),
+            Some("http://127.0.0.1:7897".into())
+        );
+
+        let single = "127.0.0.1:7897";
+        assert_eq!(
+            parse_proxy_server_string(single),
+            Some("http://127.0.0.1:7897".into())
+        );
+
+        assert_eq!(parse_proxy_server_string(""), None);
     }
 }

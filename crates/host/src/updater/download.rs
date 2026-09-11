@@ -85,19 +85,9 @@ fn create_agent(connect_secs: u64, read_secs: u64) -> ureq::Agent {
         .timeout_read(std::time::Duration::from_secs(read_secs))
         .user_agent(&format!("devtoys-rs/{}", crate::version::CURRENT_VERSION));
 
-    let proxy_env = std::env::var("HTTPS_PROXY")
-        .or_else(|_| std::env::var("https_proxy"))
-        .or_else(|_| std::env::var("ALL_PROXY"))
-        .or_else(|_| std::env::var("all_proxy"))
-        .or_else(|_| std::env::var("HTTP_PROXY"))
-        .or_else(|_| std::env::var("http_proxy"));
-
-    if let Ok(proxy_url) = proxy_env {
-        let proxy_url = proxy_url.trim();
-        if !proxy_url.is_empty() {
-            if let Ok(proxy) = ureq::Proxy::new(proxy_url) {
-                builder = builder.proxy(proxy);
-            }
+    if let Some(proxy_url) = super::client::detect_proxy_url() {
+        if let Ok(proxy) = ureq::Proxy::new(&proxy_url) {
+            builder = builder.proxy(proxy);
         }
     }
 
