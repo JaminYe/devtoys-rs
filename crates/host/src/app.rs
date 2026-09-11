@@ -744,7 +744,7 @@ impl Workspace {
                                 Some("可立即下载 Windows x64 安装包并校验"),
                                 |ui| {
                                     if ui.button(t("settings.release_notes")).clicked() {
-                                        ui.ctx().open_url(egui::OpenUrl::new_tab(&release_url));
+                                        open_browser(&release_url);
                                     }
                                     if ui.button(t("settings.download_update")).clicked() {
                                         self.updater.start_download(ui.ctx().clone());
@@ -794,6 +794,7 @@ impl Workspace {
                         }
                         crate::updater::UpdateStatus::ReadyToInstall {
                             target_version,
+                            installer_path,
                             ..
                         } => {
                             let title = format!("v{target_version} 已就绪");
@@ -812,16 +813,21 @@ impl Workspace {
                                     );
                                 }
                                 crate::updater::InstallType::PortableOrDev => {
+                                    let inst_path = installer_path.clone();
                                     widgets::setting_row(
                                         ui,
                                         &palette,
                                         &title,
-                                        Some("当前为便携版或开发构建，无法自动就地更新，请前往发布页面手动下载"),
+                                        Some("当前为便携版或开发构建，无法就地自动更新。可直接运行已下载的安装包或前往发布页"),
                                         |ui| {
                                             if ui.button("前往发布页").clicked() {
-                                                ui.ctx().open_url(egui::OpenUrl::new_tab(
-                                                    "https://github.com/JaminYe/devtoys-rs/releases",
-                                                ));
+                                                open_browser("https://github.com/JaminYe/devtoys-rs/releases");
+                                            }
+                                            if ui.button("打开所在文件夹").clicked() {
+                                                reveal_in_file_manager(&inst_path);
+                                            }
+                                            if ui.button("运行安装包").clicked() {
+                                                let _ = std::process::Command::new(&inst_path).spawn();
                                             }
                                         },
                                     );
@@ -1161,6 +1167,43 @@ impl Workspace {
                     });
                 }
             }
+        }
+    }
+}
+fn open_browser(url: &str) {
+    #[cfg(windows)]
+    {
+        let _ = std::process::Command::new("rundll32")
+            .args(["url.dll,FileProtocolHandler", url])
+            .spawn();
+    }
+    #[cfg(target_os = "macos")]
+    {
+        let _ = std::process::Command::new("open").arg(url).spawn();
+    }
+    #[cfg(all(not(windows), not(target_os = "macos")))]
+    {
+        let _ = std::process::Command::new("xdg-open").arg(url).spawn();
+    }
+}
+
+fn reveal_in_file_manager(path: &std::path::Path) {
+    #[cfg(windows)]
+    {
+        let _ = std::process::Command::new("explorer")
+            .args(["/select,", &path.to_string_lossy()])
+            .spawn();
+    }
+    #[cfg(target_os = "macos")]
+    {
+        let _ = std::process::Command::new("open")
+            .args(["-R", &path.to_string_lossy()])
+            .spawn();
+    }
+    #[cfg(all(not(windows), not(target_os = "macos")))]
+    {
+        if let Some(parent) = path.parent() {
+            let _ = std::process::Command::new("xdg-open").arg(parent).spawn();
         }
     }
 }

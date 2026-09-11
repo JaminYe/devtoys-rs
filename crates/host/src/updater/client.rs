@@ -112,14 +112,14 @@ pub fn parse_proxy_server_string(raw: &str) -> Option<String> {
         // e.g. "http=127.0.0.1:7890;https=127.0.0.1:7890"
         for part in trimmed.split(';') {
             let part = part.trim();
-            if part.starts_with("https=") {
-                return Some(normalize_proxy_url(&part["https=".len()..]));
+            if let Some(target) = part.strip_prefix("https=") {
+                return Some(normalize_proxy_url(target));
             }
         }
         for part in trimmed.split(';') {
             let part = part.trim();
-            if part.starts_with("http=") {
-                return Some(normalize_proxy_url(&part["http=".len()..]));
+            if let Some(target) = part.strip_prefix("http=") {
+                return Some(normalize_proxy_url(target));
             }
         }
     }
