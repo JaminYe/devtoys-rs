@@ -195,3 +195,93 @@ pub fn section_card(ui: &mut Ui, palette: &Palette, add: impl FnOnce(&mut Ui)) {
         .inner_margin(egui::Margin::same(20))
         .show(ui, add);
 }
+
+pub fn setting_card_header(ui: &mut Ui, palette: &Palette, icon: Icon, title: &str) {
+    ui.horizontal(|ui| {
+        let (icon_rect, _) = ui.allocate_exact_size(Vec2::splat(20.0), Sense::hover());
+        theme::paint_icon(ui, icon, icon_rect, 18.0, palette.secondary);
+        ui.label(
+            egui::RichText::new(title)
+                .font(theme::semibold(15.0))
+                .color(palette.text),
+        );
+    });
+    ui.add_space(8.0);
+}
+
+pub fn setting_row<R>(
+    ui: &mut Ui,
+    palette: &Palette,
+    title: &str,
+    description: Option<&str>,
+    add_controls: impl FnOnce(&mut Ui) -> R,
+) -> R {
+    let available_w = ui.available_width();
+    let is_wide = available_w >= 480.0;
+
+    if is_wide {
+        let mut result = None;
+        ui.horizontal(|ui| {
+            // Reserve space for controls on the right (up to 280px)
+            let control_max_w = 280.0f32.min(available_w * 0.45);
+            let text_w = (available_w - control_max_w - 16.0).max(140.0);
+
+            // 1. Left side: Title and Description in top-down layout
+            ui.allocate_ui_with_layout(
+                vec2(text_w, ui.available_height()),
+                Layout::top_down(Align::Min),
+                |ui| {
+                    ui.set_width(text_w);
+                    ui.add(
+                        egui::Label::new(
+                            egui::RichText::new(title)
+                                .font(theme::semibold(14.0))
+                                .color(palette.text),
+                        )
+                        .wrap(),
+                    );
+                    if let Some(desc) = description {
+                        ui.add(
+                            egui::Label::new(
+                                egui::RichText::new(desc)
+                                    .font(theme::regular(13.0))
+                                    .color(palette.dim),
+                            )
+                            .wrap(),
+                        );
+                    }
+                },
+            );
+
+            // 2. Right side: right-aligned controls
+            ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
+                result = Some(add_controls(ui));
+            });
+        });
+        result.expect("controls added")
+    } else {
+        ui.vertical(|ui| {
+            ui.add(
+                egui::Label::new(
+                    egui::RichText::new(title)
+                        .font(theme::semibold(14.0))
+                        .color(palette.text),
+                )
+                .wrap(),
+            );
+            if let Some(desc) = description {
+                ui.add(
+                    egui::Label::new(
+                        egui::RichText::new(desc)
+                            .font(theme::regular(13.0))
+                            .color(palette.dim),
+                    )
+                    .wrap(),
+                );
+            }
+            ui.add_space(8.0);
+            add_controls(ui)
+        })
+        .inner
+    }
+}

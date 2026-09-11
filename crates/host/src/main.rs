@@ -3,6 +3,8 @@
 mod app;
 mod system_fonts;
 mod theme;
+mod updater;
+mod version;
 mod widgets;
 
 use app::Workspace;

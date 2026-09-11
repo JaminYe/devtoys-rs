@@ -32,6 +32,12 @@ pub struct Workspace {
     applied_dark: Option<bool>,
     settings_error: Option<String>,
     catalog: ToolCatalog,
+    pub(crate) updater: crate::updater::UpdateManager,
+    pub(crate) startup_checked: bool,
+    pub(crate) toast_dismissed: bool,
+    pub(crate) toasted_version: Option<String>,
+    pub(crate) confirm_update: bool,
+    pub(crate) check_is_auto: bool,
 }
 
 impl Workspace {
@@ -54,6 +60,12 @@ impl Workspace {
             applied_dark: None,
             settings_error: None,
             catalog,
+            updater: crate::updater::UpdateManager::new(),
+            startup_checked: false,
+            toast_dismissed: false,
+            toasted_version: None,
+            confirm_update: false,
+            check_is_auto: false,
         }
     }
 
@@ -532,81 +544,315 @@ impl Workspace {
             .id_salt("settings")
             .auto_shrink([false, false])
             .show(ui, |ui| {
-                ui.label(
-                    egui::RichText::new(t("settings.title"))
-                        .font(theme::semibold(20.0))
-                        .color(palette.text),
-                );
-                ui.label(
-                    egui::RichText::new(t("settings.theme_desc"))
-                        .font(theme::regular(13.0))
-                        .color(palette.dim),
-                );
-                ui.add_space(16.0);
-                self.render_settings_error(ui, palette);
-
-                widgets::section_card(ui, &palette, |ui| {
-                    ui.horizontal(|ui| {
-                        let (icon_rect, _) =
-                            ui.allocate_exact_size(Vec2::splat(18.0), egui::Sense::hover());
-                        theme::paint_icon(ui, Icon::Palette, icon_rect, 16.0, palette.secondary);
+                let max_w = ui.available_width().min(880.0);
+                ui.allocate_ui_with_layout(
+                    egui::vec2(max_w, ui.available_height()),
+                    egui::Layout::top_down(egui::Align::Min),
+                    |ui| {
+                        ui.set_width(max_w);
                         ui.label(
-                            egui::RichText::new(t("settings.appearance"))
-                                .font(theme::semibold(15.0))
+                            egui::RichText::new(t("settings.title"))
+                                .font(theme::semibold(20.0))
                                 .color(palette.text),
                         );
-                    });
-                    ui.label(
-                        egui::RichText::new(t("settings.theme_desc"))
-                            .font(theme::regular(13.0))
-                            .color(palette.dim),
+                        ui.add_space(16.0);
+                        self.render_settings_error(ui, palette);
+                // 卡片 1：外观
+                widgets::section_card(ui, &palette, |ui| {
+                    widgets::setting_card_header(
+                        ui,
+                        &palette,
+                        Icon::Palette,
+                        t("settings.appearance"),
                     );
-                    ui.add_space(8.0);
-                    ui.horizontal(|ui| {
-                        for (label, value) in [
-                            (t("settings.theme_light"), ThemePreference::Light),
-                            (t("settings.theme_dark"), ThemePreference::Dark),
-                            (t("settings.theme_system"), ThemePreference::System),
-                        ] {
-                            let selected = theme == value;
-                            if crate_toggle(ui, selected, label).clicked() {
-                                let result = self.state.set_theme(value);
-                                self.apply_setting(result);
-                                self.applied_dark = None;
+                    widgets::setting_row(
+                        ui,
+                        &palette,
+                        t("settings.theme"),
+                        Some(t("settings.theme_desc")),
+                        |ui| {
+                            for (label, value) in [
+                                (t("settings.theme_system"), ThemePreference::System),
+                                (t("settings.theme_dark"), ThemePreference::Dark),
+                                (t("settings.theme_light"), ThemePreference::Light),
+                            ] {
+                                let selected = theme == value;
+                                if crate_toggle(ui, selected, label).clicked() {
+                                    let result = self.state.set_theme(value);
+                                    self.apply_setting(result);
+                                    self.applied_dark = None;
+                                }
                             }
-                        }
-                    });
+                        },
+                    );
                 });
 
-                ui.add_space(12.0);
+                ui.add_space(16.0);
+
+                // 卡片 2：行为
                 widgets::section_card(ui, &palette, |ui| {
-                    ui.label(
-                        egui::RichText::new(t("settings.behavior"))
-                            .font(theme::semibold(15.0))
-                            .color(palette.text),
+                    widgets::setting_card_header(
+                        ui,
+                        &palette,
+                        Icon::Settings2,
+                        t("settings.behavior"),
                     );
-                    ui.label(
-                        egui::RichText::new(t("settings.smart_detection_desc"))
-                            .font(theme::regular(13.0))
-                            .color(palette.dim),
-                    );
-                    ui.add_space(8.0);
                     let mut detection = detection;
-                    if ui
-                        .checkbox(&mut detection, t("settings.smart_detection"))
-                        .changed()
-                    {
-                        let result = self.state.set_smart_detection_enabled(detection);
-                        self.apply_setting(result);
-                    }
-                    ui.add_enabled_ui(detection, |ui| {
-                        let mut paste = paste;
-                        if ui.checkbox(&mut paste, t("settings.auto_paste")).changed() {
-                            let result = self.state.set_smart_detection_paste(paste);
-                            self.apply_setting(result);
-                        }
-                    });
+                    widgets::setting_row(
+                        ui,
+                        &palette,
+                        t("settings.smart_detection"),
+                        Some(t("settings.smart_detection_desc")),
+                        |ui| {
+                            if ui.checkbox(&mut detection, "").changed() {
+                                let result = self.state.set_smart_detection_enabled(detection);
+                                self.apply_setting(result);
+                            }
+                        },
+                    );
+                    ui.add_space(12.0);
+                    widgets::setting_row(
+                        ui,
+                        &palette,
+                        t("settings.auto_paste"),
+                        Some(t("settings.auto_paste_desc")),
+                        |ui| {
+                            ui.add_enabled_ui(detection, |ui| {
+                                let mut paste = paste;
+                                if ui.checkbox(&mut paste, "").changed() {
+                                    let result = self.state.set_smart_detection_paste(paste);
+                                    self.apply_setting(result);
+                                }
+                            });
+                        },
+                    );
                 });
+
+                ui.add_space(16.0);
+
+                // 卡片 3：关于与更新
+                widgets::section_card(ui, &palette, |ui| {
+                    widgets::setting_card_header(
+                        ui,
+                        &palette,
+                        Icon::Inspector,
+                        t("settings.about_and_update"),
+                    );
+                    widgets::setting_row(
+                        ui,
+                        &palette,
+                        t("settings.current_version"),
+                        Some(t("settings.current_version_desc")),
+                        |ui| {
+                            ui.label(
+                                egui::RichText::new(format!(
+                                    "v{}",
+                                    crate::version::CURRENT_VERSION
+                                ))
+                                .font(theme::semibold(14.0))
+                                .color(palette.secondary),
+                            );
+                        },
+                    );
+
+                    ui.add_space(12.0);
+
+                    // 启动自动检查开关
+                    let mut auto_check = self.state.settings().auto_check_updates;
+                    widgets::setting_row(
+                        ui,
+                        &palette,
+                        t("settings.auto_check_updates"),
+                        Some(t("settings.auto_check_updates_desc")),
+                        |ui| {
+                            if ui.checkbox(&mut auto_check, "").changed() {
+                                let result = self.state.set_auto_check_updates(auto_check);
+                                self.apply_setting(result);
+                            }
+                        },
+                    );
+
+                    ui.add_space(12.0);
+
+                    // 软件更新状态与操作行
+                    let status = self.updater.status().clone();
+                    match status {
+                        crate::updater::UpdateStatus::Idle => {
+                            widgets::setting_row(
+                                ui,
+                                &palette,
+                                "软件更新",
+                                Some("检查是否有可用的新版本"),
+                                |ui| {
+                                    if ui.button(t("settings.check_updates")).clicked() {
+                                        self.updater.check_now(ui.ctx().clone());
+                                    }
+                                },
+                            );
+                        }
+                        crate::updater::UpdateStatus::Checking => {
+                            widgets::setting_row(
+                                ui,
+                                &palette,
+                                t("settings.update_checking"),
+                                Some("正在连接 GitHub 查询最新正式版本…"),
+                                |ui| {
+                                    ui.add_enabled(false, egui::Button::new("检查中…"));
+                                },
+                            );
+                        }
+                        crate::updater::UpdateStatus::Latest { .. } => {
+                            widgets::setting_row(
+                                ui,
+                                &palette,
+                                t("settings.update_latest"),
+                                Some("当前运行的是最新正式版本"),
+                                |ui| {
+                                    if ui.button(t("settings.check_updates")).clicked() {
+                                        self.check_is_auto = false;
+                                        self.updater.check_now(ui.ctx().clone());
+                                    }
+                                },
+                            );
+                        }
+                        crate::updater::UpdateStatus::UpdateAvailable(pkg) => {
+                            let title = format!("发现新版本：v{}", pkg.latest_version);
+                            let release_url = pkg.release_url.clone();
+                            widgets::setting_row(
+                                ui,
+                                &palette,
+                                &title,
+                                Some("可立即下载 Windows x64 安装包并校验"),
+                                |ui| {
+                                    if ui.button(t("settings.release_notes")).clicked() {
+                                        ui.ctx().open_url(egui::OpenUrl::new_tab(&release_url));
+                                    }
+                                    if ui.button(t("settings.download_update")).clicked() {
+                                        self.updater.start_download(ui.ctx().clone());
+                                    }
+                                },
+                            );
+                        }
+                        crate::updater::UpdateStatus::Downloading {
+                            downloaded_bytes,
+                            total_bytes,
+                            ..
+                        } => {
+                            let progress_desc = match total_bytes {
+                                Some(total) => format!(
+                                    "已下载 {:.1} MB / {:.1} MB ({:.0}%)",
+                                    downloaded_bytes as f64 / 1_048_576.0,
+                                    total as f64 / 1_048_576.0,
+                                    (downloaded_bytes as f64 / total as f64 * 100.0).clamp(0.0, 100.0)
+                                ),
+                                None => format!(
+                                    "已下载 {:.1} MB",
+                                    downloaded_bytes as f64 / 1_048_576.0
+                                ),
+                            };
+                            widgets::setting_row(
+                                ui,
+                                &palette,
+                                t("settings.update_downloading"),
+                                Some(&progress_desc),
+                                |ui| {
+                                    if ui.button(t("settings.update_cancel")).clicked() {
+                                        self.updater.cancel_download();
+                                    }
+                                },
+                            );
+                        }
+                        crate::updater::UpdateStatus::Verifying { .. } => {
+                            widgets::setting_row(
+                                ui,
+                                &palette,
+                                t("settings.update_verifying"),
+                                Some("正在校验安装包 SHA-256 完整性摘要…"),
+                                |ui| {
+                                    ui.add_enabled(false, egui::Button::new("校验中…"));
+                                },
+                            );
+                        }
+                        crate::updater::UpdateStatus::ReadyToInstall {
+                            target_version,
+                            ..
+                        } => {
+                            let title = format!("v{target_version} 已就绪");
+                            match crate::updater::detect_install_type() {
+                                crate::updater::InstallType::Installed { .. } => {
+                                    widgets::setting_row(
+                                        ui,
+                                        &palette,
+                                        &title,
+                                        Some("安装包已下载且校验通过，可立即重启更新应用"),
+                                        |ui| {
+                                            if ui.button(t("settings.restart_and_update")).clicked() {
+                                                self.confirm_update = true;
+                                            }
+                                        },
+                                    );
+                                }
+                                crate::updater::InstallType::PortableOrDev => {
+                                    widgets::setting_row(
+                                        ui,
+                                        &palette,
+                                        &title,
+                                        Some("当前为便携版或开发构建，无法自动就地更新，请前往发布页面手动下载"),
+                                        |ui| {
+                                            if ui.button("前往发布页").clicked() {
+                                                ui.ctx().open_url(egui::OpenUrl::new_tab(
+                                                    "https://github.com/JaminYe/devtoys-rs/releases",
+                                                ));
+                                            }
+                                        },
+                                    );
+                                }
+                            }
+                        }
+                        crate::updater::UpdateStatus::PreparingInstall { target_version } => {
+                            let title = format!("v{target_version} 正在准备更新…");
+                            widgets::setting_row(
+                                ui,
+                                &palette,
+                                &title,
+                                Some("正在启动安装程序并等待就绪握手，保存设置后将自动退出"),
+                                |ui| {
+                                    ui.add_enabled(false, egui::Button::new("准备中…"));
+                                },
+                            );
+                        }
+                        crate::updater::UpdateStatus::NoRelease => {
+                            widgets::setting_row(
+                                ui,
+                                &palette,
+                                t("settings.update_no_release"),
+                                Some("仓库尚未发布任何正式版本"),
+                                |ui| {
+                                    if ui.button(t("settings.check_updates")).clicked() {
+                                        self.updater.check_now(ui.ctx().clone());
+                                    }
+                                },
+                            );
+                        }
+                        crate::updater::UpdateStatus::Failed {
+                            reason,
+                            can_retry,
+                        } => {
+                            widgets::setting_row(
+                                ui,
+                                &palette,
+                                t("settings.update_failed"),
+                                Some(&reason),
+                                |ui| {
+                                    if can_retry && ui.button(t("settings.update_retry")).clicked() {
+                                        self.updater.check_now(ui.ctx().clone());
+                                    }
+                                },
+                            );
+                        }
+                    }
+                });
+            });
             });
     }
 
@@ -682,6 +928,14 @@ impl Workspace {
     }
 
     pub fn show(&mut self, ui: &mut egui::Ui) {
+        self.updater.tick();
+        if !self.startup_checked {
+            self.startup_checked = true;
+            if self.state.settings().auto_check_updates {
+                self.check_is_auto = true;
+                self.updater.check_now(ui.ctx().clone());
+            }
+        }
         let palette = self.palette;
         ui.painter().rect_filled(ui.max_rect(), 0.0, palette.window);
 
@@ -698,6 +952,193 @@ impl Workspace {
                         });
                 });
             });
+
+        self.show_toast(ui);
+        self.show_confirm_update_modal(ui.ctx());
+    }
+
+    fn show_toast(&mut self, ui: &mut egui::Ui) {
+        if !self.check_is_auto || self.toast_dismissed || self.page == Page::Settings {
+            return;
+        }
+        let palette = self.palette;
+        if let crate::updater::UpdateStatus::UpdateAvailable(pkg) = self.updater.status() {
+            let latest_version = &pkg.latest_version;
+            let mut goto_settings = false;
+            let mut dismiss = false;
+
+            let screen_rect = ui
+                .ctx()
+                .input(|i| i.raw.screen_rect)
+                .unwrap_or_else(|| ui.max_rect());
+            let toast_width = 320.0;
+            let toast_pos = egui::pos2(
+                (screen_rect.right() - toast_width - 20.0).max(screen_rect.left() + 10.0),
+                screen_rect.top() + 20.0,
+            );
+
+            egui::Area::new(egui::Id::new("update_toast_area"))
+                .fixed_pos(toast_pos)
+                .order(egui::Order::Foreground)
+                .show(ui.ctx(), |ui| {
+                    egui::Frame::new()
+                        .fill(palette.panel)
+                        .stroke(egui::Stroke::new(1.0, palette.outline))
+                        .corner_radius(crate::theme::RADIUS)
+                        .shadow(egui::epaint::Shadow {
+                            offset: [0, 4],
+                            blur: 16,
+                            spread: 0,
+                            color: palette.shadow,
+                        })
+                        .inner_margin(egui::Margin::same(14))
+                        .show(ui, |ui| {
+                            ui.set_max_width(toast_width - 28.0);
+                            ui.horizontal(|ui| {
+                                let (icon_rect, _) = ui.allocate_exact_size(
+                                    egui::Vec2::splat(18.0),
+                                    egui::Sense::hover(),
+                                );
+                                crate::theme::paint_icon(
+                                    ui,
+                                    crate::theme::Icon::Inspector,
+                                    icon_rect,
+                                    16.0,
+                                    palette.accent,
+                                );
+                                ui.label(
+                                    egui::RichText::new(t("settings.update_toast_title"))
+                                        .font(crate::theme::semibold(14.0))
+                                        .color(palette.text),
+                                );
+                                ui.with_layout(
+                                    egui::Layout::right_to_left(egui::Align::Center),
+                                    |ui| {
+                                        if crate::theme::icon_button(
+                                            ui,
+                                            crate::theme::Icon::Close,
+                                            12.0,
+                                            palette.dim,
+                                            palette.text,
+                                            "",
+                                        )
+                                        .clicked()
+                                        {
+                                            dismiss = true;
+                                        }
+                                    },
+                                );
+                            });
+                            ui.add_space(4.0);
+                            ui.label(
+                                egui::RichText::new(format!(
+                                    "DevToys 新版本 v{latest_version} 已发布！"
+                                ))
+                                .font(crate::theme::regular(13.0))
+                                .color(palette.secondary),
+                            );
+                            ui.add_space(8.0);
+                            ui.horizontal(|ui| {
+                                if ui.button(t("settings.update_toast_action")).clicked() {
+                                    goto_settings = true;
+                                }
+                            });
+                        });
+                });
+
+            if goto_settings {
+                self.page = Page::Settings;
+                self.toast_dismissed = true;
+                self.toasted_version = Some(latest_version.clone());
+            } else if dismiss {
+                self.toast_dismissed = true;
+                self.toasted_version = Some(latest_version.clone());
+            }
+        }
+    }
+
+    fn show_confirm_update_modal(&mut self, ctx: &egui::Context) {
+        if !self.confirm_update {
+            return;
+        }
+
+        let mut confirmed = false;
+        let mut cancelled = false;
+
+        egui::Window::new("确认更新并重启")
+            .collapsible(false)
+            .resizable(false)
+            .anchor(egui::Align2::CENTER_CENTER, egui::Vec2::ZERO)
+            .order(egui::Order::Foreground)
+            .show(ctx, |ui| {
+                ui.set_max_width(360.0);
+                ui.add_space(4.0);
+                ui.label(
+                    egui::RichText::new(
+                        "DevToys 即将关闭并执行更新。未保存的工具输入内容不会保留。",
+                    )
+                    .font(crate::theme::regular(14.0))
+                    .color(self.palette.text),
+                );
+                ui.add_space(8.0);
+                ui.label(
+                    egui::RichText::new("应用设置将在退出前自动保存。更新完成后将自动重新启动。")
+                        .font(crate::theme::regular(12.0))
+                        .color(self.palette.dim),
+                );
+                ui.add_space(16.0);
+                ui.horizontal(|ui| {
+                    ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                        if ui.button("确定并重启更新").clicked() {
+                            confirmed = true;
+                        }
+                        if ui.button("取消").clicked() {
+                            cancelled = true;
+                        }
+                    });
+                });
+            });
+
+        if cancelled {
+            self.confirm_update = false;
+        } else if confirmed {
+            self.confirm_update = false;
+            self.execute_install(ctx.clone());
+        }
+    }
+
+    fn execute_install(&mut self, ctx: egui::Context) {
+        if let crate::updater::UpdateStatus::ReadyToInstall {
+            installer_path,
+            expected_sha256,
+            target_version,
+        } = self.updater.status().clone()
+        {
+            match crate::updater::detect_install_type() {
+                crate::updater::InstallType::Installed { install_dir } => {
+                    let state_clone = self.state.clone();
+                    let save_fn = move || {
+                        state_clone
+                            .persist()
+                            .map_err(|e| format!("保存设置失败：{e}"))
+                    };
+                    self.updater.start_install(
+                        target_version,
+                        installer_path,
+                        expected_sha256,
+                        install_dir,
+                        save_fn,
+                        ctx,
+                    );
+                }
+                crate::updater::InstallType::PortableOrDev => {
+                    self.updater.set_status(crate::updater::UpdateStatus::Failed {
+                        reason: "检测到当前运行的是开发或便携版本，无法自动执行覆盖更新。请前往发布页面手动下载。".into(),
+                        can_retry: false,
+                    });
+                }
+            }
+        }
     }
 }
 
@@ -711,6 +1152,7 @@ fn crate_toggle(ui: &mut egui::Ui, selected: bool, text: &str) -> egui::Response
 
 impl eframe::App for Workspace {
     fn logic(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+        self.updater.tick();
         self.apply_theme(ctx);
         self.tick_detect(ctx);
     }
@@ -753,6 +1195,12 @@ mod tests {
             applied_dark: None,
             settings_error: None,
             catalog: ToolCatalog::default(),
+            updater: crate::updater::UpdateManager::new(),
+            startup_checked: true, // headless test bypass
+            toast_dismissed: false,
+            toasted_version: None,
+            confirm_update: false,
+            check_is_auto: false,
         };
         let ctx = egui::Context::default();
         // Egui requests startup passes; settle those before observing the host.
@@ -897,6 +1345,12 @@ mod tests {
             applied_dark: None,
             settings_error: None,
             catalog,
+            updater: crate::updater::UpdateManager::new(),
+            startup_checked: true, // headless test bypass
+            toast_dismissed: false,
+            toasted_version: None,
+            confirm_update: false,
+            check_is_auto: false,
         }
     }
 
@@ -1154,5 +1608,305 @@ mod tests {
         let session = workspace.sessions.get(JSON_FORMATTER_ID).unwrap();
         let options = session.persistable_options().unwrap().1;
         assert_eq!(options["indent"], "two_spaces");
+    }
+
+    #[test]
+    fn settings_view_renders_wide_and_narrow_and_themes() {
+        let dir = tempfile::tempdir().unwrap();
+        let mut workspace = workspace_in(dir.path());
+        workspace.page = Page::Settings;
+
+        let ctx = egui::Context::default();
+        crate::theme::install(&ctx);
+
+        // Wide viewport
+        let mut wide_input = egui::RawInput::default();
+        wide_input.screen_rect = Some(egui::Rect::from_min_size(
+            egui::Pos2::ZERO,
+            egui::vec2(1000.0, 700.0),
+        ));
+        let mut out = ctx.run_ui(wide_input, |ui| {
+            workspace.show(ui);
+        });
+        out.textures_delta.clear();
+
+        // Narrow viewport (mimicking min window without sidebar)
+        let mut narrow_input = egui::RawInput::default();
+        narrow_input.screen_rect = Some(egui::Rect::from_min_size(
+            egui::Pos2::ZERO,
+            egui::vec2(400.0, 500.0),
+        ));
+        let mut out = ctx.run_ui(narrow_input, |ui| {
+            workspace.show(ui);
+        });
+        out.textures_delta.clear();
+
+        // Theme switches
+        for theme in [
+            ThemePreference::Light,
+            ThemePreference::Dark,
+            ThemePreference::System,
+        ] {
+            workspace.state.set_theme(theme).unwrap();
+            workspace.palette = match theme {
+                ThemePreference::Light => Palette::light(),
+                ThemePreference::Dark => Palette::dark(),
+                ThemePreference::System => Palette::dark(),
+            };
+            let mut out = ctx.run_ui(egui::RawInput::default(), |ui| {
+                workspace.show(ui);
+            });
+            out.textures_delta.clear();
+        }
+        assert!(crate::version::SemVer::parse(crate::version::CURRENT_VERSION).is_ok());
+    }
+
+    #[test]
+    fn settings_smart_detection_toggle_preserves_paste_state() {
+        let dir = tempfile::tempdir().unwrap();
+        let mut workspace = workspace_in(dir.path());
+        workspace.page = Page::Settings;
+
+        // Defaults are both true
+        assert!(workspace.state.settings().smart_detection_enabled);
+        assert!(workspace.state.settings().smart_detection_paste);
+
+        // Turn off smart detection
+        workspace.state.set_smart_detection_enabled(false).unwrap();
+        assert!(!workspace.state.settings().smart_detection_enabled);
+        // Paste setting is preserved in settings
+        assert!(workspace.state.settings().smart_detection_paste);
+        // But paste_enabled() runtime method returns false
+        assert!(!workspace.state.settings().paste_enabled());
+
+        // Turn smart detection back on
+        workspace.state.set_smart_detection_enabled(true).unwrap();
+        assert!(workspace.state.settings().smart_detection_enabled);
+        assert!(workspace.state.settings().smart_detection_paste);
+        assert!(workspace.state.settings().paste_enabled());
+    }
+
+    #[test]
+    fn settings_view_update_states_render_cleanly() {
+        use crate::updater::{UpdateAsset, UpdateStatus};
+
+        let dir = tempfile::tempdir().unwrap();
+        let mut workspace = workspace_in(dir.path());
+        workspace.page = Page::Settings;
+
+        let ctx = egui::Context::default();
+        crate::theme::install(&ctx);
+
+        let states = vec![
+            UpdateStatus::Idle,
+            UpdateStatus::Checking,
+            UpdateStatus::Latest {
+                current_version: "0.1.0".into(),
+            },
+            UpdateStatus::UpdateAvailable(crate::updater::ReleasePackage {
+                current_version: "0.1.0".into(),
+                latest_version: "0.2.0".into(),
+                release_url: "https://github.com/JaminYe/devtoys-rs/releases/tag/v0.2.0".into(),
+                release_notes: Some("新版特性发布".into()),
+                asset: UpdateAsset {
+                    name: "devtoys-x86_64-pc-windows-msvc-setup.exe".into(),
+                    download_url: "https://download/setup.exe".into(),
+                    size: 5000000,
+                    sha256: None,
+                },
+                checksum_asset: Some(UpdateAsset {
+                    name: "checksums.txt".into(),
+                    download_url: "https://download/checksums.txt".into(),
+                    size: 100,
+                    sha256: None,
+                }),
+            }),
+            UpdateStatus::Downloading {
+                package: crate::updater::ReleasePackage {
+                    current_version: "0.1.0".into(),
+                    latest_version: "0.2.0".into(),
+                    release_url: "https://github.com/test".into(),
+                    release_notes: None,
+                    asset: UpdateAsset {
+                        name: "devtoys-x86_64-pc-windows-msvc-setup.exe".into(),
+                        download_url: "https://download/setup.exe".into(),
+                        size: 5000000,
+                        sha256: None,
+                    },
+                    checksum_asset: None,
+                },
+                downloaded_bytes: 2500000,
+                total_bytes: Some(5000000),
+            },
+            UpdateStatus::Verifying(crate::updater::ReleasePackage {
+                current_version: "0.1.0".into(),
+                latest_version: "0.2.0".into(),
+                release_url: "https://github.com/test".into(),
+                release_notes: None,
+                asset: UpdateAsset {
+                    name: "devtoys-x86_64-pc-windows-msvc-setup.exe".into(),
+                    download_url: "https://download/setup.exe".into(),
+                    size: 5000000,
+                    sha256: None,
+                },
+                checksum_asset: None,
+            }),
+            UpdateStatus::ReadyToInstall {
+                target_version: "0.2.0".into(),
+                installer_path: std::path::PathBuf::from("setup.exe"),
+                expected_sha256: "abcdef".into(),
+            },
+            UpdateStatus::PreparingInstall {
+                target_version: "0.2.0".into(),
+            },
+            UpdateStatus::NoRelease,
+            UpdateStatus::Failed {
+                reason: "网络连接失败，请检查网络设置后重试".into(),
+                can_retry: true,
+            },
+        ];
+
+        for st in states {
+            workspace.updater.set_status(st);
+            let mut out = ctx.run_ui(egui::RawInput::default(), |ui| {
+                workspace.show(ui);
+            });
+            out.textures_delta.clear();
+        }
+    }
+
+    #[test]
+    fn startup_check_triggers_only_once_if_enabled() {
+        let dir = tempfile::tempdir().unwrap();
+        let mut workspace = workspace_in(dir.path());
+        workspace.startup_checked = false;
+        assert!(workspace.state.settings().auto_check_updates);
+        workspace
+            .updater
+            .set_check_handler(|v| crate::updater::CheckOutcome::Latest {
+                current_version: v.to_string(),
+            });
+
+        let ctx = egui::Context::default();
+        crate::theme::install(&ctx);
+
+        // First frame triggers startup check
+        let mut out = ctx.run_ui(egui::RawInput::default(), |ui| {
+            workspace.show(ui);
+        });
+        out.textures_delta.clear();
+        assert!(workspace.startup_checked);
+
+        // Wait for mock check to deliver and tick to update status
+        std::thread::sleep(std::time::Duration::from_millis(30));
+        let mut out = ctx.run_ui(egui::RawInput::default(), |ui| {
+            workspace.show(ui);
+        });
+        out.textures_delta.clear();
+        assert_eq!(
+            *workspace.updater.status(),
+            crate::updater::UpdateStatus::Latest {
+                current_version: "0.1.0".into()
+            }
+        );
+
+        // Third frame does not trigger again (status stays Latest)
+        let mut out = ctx.run_ui(egui::RawInput::default(), |ui| {
+            workspace.show(ui);
+        });
+        out.textures_delta.clear();
+        assert_eq!(
+            *workspace.updater.status(),
+            crate::updater::UpdateStatus::Latest {
+                current_version: "0.1.0".into()
+            }
+        );
+    }
+
+    #[test]
+    fn startup_check_does_not_trigger_when_disabled() {
+        let dir = tempfile::tempdir().unwrap();
+        let mut workspace = workspace_in(dir.path());
+        workspace.state.set_auto_check_updates(false).unwrap();
+        workspace.startup_checked = false;
+
+        let ctx = egui::Context::default();
+        crate::theme::install(&ctx);
+
+        let mut out = ctx.run_ui(egui::RawInput::default(), |ui| {
+            workspace.show(ui);
+        });
+        out.textures_delta.clear();
+        assert!(workspace.startup_checked);
+        assert_eq!(
+            *workspace.updater.status(),
+            crate::updater::UpdateStatus::Idle
+        );
+    }
+
+    #[test]
+    fn toast_notification_renders_and_dismisses() {
+        use crate::updater::{UpdateAsset, UpdateStatus};
+
+        let dir = tempfile::tempdir().unwrap();
+        let mut workspace = workspace_in(dir.path());
+        workspace.page = Page::AllTools;
+        workspace.check_is_auto = true;
+        workspace.updater.set_status(UpdateStatus::UpdateAvailable(
+            crate::updater::ReleasePackage {
+                current_version: "0.1.0".into(),
+                latest_version: "0.2.0".into(),
+                release_url: "https://github.com/test/release".into(),
+                release_notes: None,
+                asset: UpdateAsset {
+                    name: "devtoys-x86_64-pc-windows-msvc-setup.exe".into(),
+                    download_url: "https://test/setup.exe".into(),
+                    size: 1000,
+                    sha256: None,
+                },
+                checksum_asset: None,
+            },
+        ));
+        let ctx = egui::Context::default();
+        crate::theme::install(&ctx);
+
+        // First frame shows toast (toast_dismissed is false)
+        assert!(!workspace.toast_dismissed);
+        let mut out = ctx.run_ui(egui::RawInput::default(), |ui| {
+            workspace.show(ui);
+        });
+        out.textures_delta.clear();
+
+        // Dismissing toast
+        workspace.toast_dismissed = true;
+        let mut out = ctx.run_ui(egui::RawInput::default(), |ui| {
+            workspace.show(ui);
+        });
+        out.textures_delta.clear();
+        assert!(workspace.toast_dismissed);
+    }
+
+    #[test]
+    fn confirm_update_modal_cancels_and_confirms() {
+        let dir = tempfile::tempdir().unwrap();
+        let mut workspace = workspace_in(dir.path());
+        workspace.confirm_update = true;
+
+        let ctx = egui::Context::default();
+        crate::theme::install(&ctx);
+
+        let mut out = ctx.run_ui(egui::RawInput::default(), |ui| {
+            workspace.show(ui);
+        });
+        out.textures_delta.clear();
+        assert!(workspace.confirm_update);
+
+        // Cancel
+        workspace.confirm_update = false;
+        let mut out = ctx.run_ui(egui::RawInput::default(), |ui| {
+            workspace.show(ui);
+        });
+        out.textures_delta.clear();
+        assert!(!workspace.confirm_update);
     }
 }
