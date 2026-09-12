@@ -128,16 +128,16 @@ pub fn parse_proxy_server_string(raw: &str) -> Option<String> {
 
 #[cfg(windows)]
 fn read_windows_registry_proxy() -> Option<String> {
-    use std::process::Command;
-    let out = Command::new("reg")
-        .args([
+    let out = super::output_no_window(
+        "reg",
+        [
             "query",
             r"HKCU\Software\Microsoft\Windows\CurrentVersion\Internet Settings",
             "/v",
             "ProxyEnable",
-        ])
-        .output()
-        .ok()?;
+        ],
+    )
+    .ok()?;
 
     if !out.status.success() {
         return None;
@@ -151,15 +151,16 @@ fn read_windows_registry_proxy() -> Option<String> {
         return None;
     }
 
-    let out_server = Command::new("reg")
-        .args([
+    let out_server = super::output_no_window(
+        "reg",
+        [
             "query",
             r"HKCU\Software\Microsoft\Windows\CurrentVersion\Internet Settings",
             "/v",
             "ProxyServer",
-        ])
-        .output()
-        .ok()?;
+        ],
+    )
+    .ok()?;
 
     if !out_server.status.success() {
         return None;
@@ -616,6 +617,27 @@ mod tests {
         );
 
         assert_eq!(parse_proxy_server_string(""), None);
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn registry_query_hides_console_window() {
+        let out = super::super::output_no_window(
+            "reg",
+            [
+                "query",
+                r"HKCU\Software\Microsoft\Windows\CurrentVersion\Internet Settings",
+                "/v",
+                "ProxyEnable",
+            ],
+        )
+        .expect("hidden reg query should run");
+        // 0 = value found, 1 = value missing; both mean CREATE_NO_WINDOW spawn worked.
+        assert!(
+            out.status.success() || out.status.code() == Some(1),
+            "reg query via CREATE_NO_WINDOW should complete: {:?}",
+            out.status
+        );
     }
 
     #[test]

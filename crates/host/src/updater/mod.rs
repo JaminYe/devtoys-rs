@@ -4,11 +4,32 @@ pub mod client;
 pub mod download;
 pub mod install;
 
+use std::ffi::OsStr;
 use std::path::{Path, PathBuf};
+use std::process::{Command, Output};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc::{self, Receiver, Sender};
 use std::sync::Arc;
 use std::thread;
+
+/// Hide the console window of spawned subprocesses on Windows GUI hosts.
+#[cfg(windows)]
+pub(crate) const CREATE_NO_WINDOW: u32 = 0x08000000;
+
+/// Capture a process's output without flashing a console window on Windows.
+pub(crate) fn output_no_window(
+    program: impl AsRef<OsStr>,
+    args: impl IntoIterator<Item = impl AsRef<OsStr>>,
+) -> std::io::Result<Output> {
+    let mut cmd = Command::new(program);
+    cmd.args(args);
+    #[cfg(windows)]
+    {
+        use std::os::windows::process::CommandExt;
+        cmd.creation_flags(CREATE_NO_WINDOW);
+    }
+    cmd.output()
+}
 
 use crate::version::SemVer;
 pub use client::{CheckOutcome, ReleasePackage, UpdateAsset};

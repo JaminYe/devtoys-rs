@@ -56,9 +56,7 @@ pub fn detect_install_type() -> InstallType {
 
 #[cfg(windows)]
 fn query_install_dir(key: &str) -> Result<PathBuf, ()> {
-    let output = Command::new("reg")
-        .args(["query", key, "/v", "InstallLocation"])
-        .output();
+    let output = super::output_no_window("reg", ["query", key, "/v", "InstallLocation"]);
 
     if let Ok(out) = output {
         if out.status.success() {
@@ -177,8 +175,7 @@ impl<F: Fn() -> Result<(), String> + Send + Sync> InstallerRunner for Production
         #[cfg(windows)]
         {
             use std::os::windows::process::CommandExt;
-            const CREATE_NO_WINDOW: u32 = 0x08000000;
-            cmd.creation_flags(CREATE_NO_WINDOW);
+            cmd.creation_flags(super::CREATE_NO_WINDOW);
         }
 
         cmd.spawn().map_err(|e| format!("启动安装程序失败：{e}"))?;
